@@ -5,9 +5,9 @@ import io.smallrye.config.ConfigMapping;
 @ConfigMapping(prefix = "tiendanube")
 public interface TiendanubeConfig {
 
-    String storeId();
+    String appId();
 
-    String token();
+    String clientSecret();
 
     String apiUrl();
 }

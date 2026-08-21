@@ -1,5 +1,6 @@
 package com.util.api.articulocanal;
 
+import com.util.api.tiendanube.TiendanubeNotFoundException;
 import com.util.api.tiendanube.TiendanubeProductoDTO;
 import com.util.api.tiendanube.TiendanubeService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -63,35 +64,59 @@ public class ArticuloCanalService {
                     articulo.codigoProveedor;
 
             try {
-
-                TiendanubeProductoDTO producto =
-                        tiendanubeService.publicar(
-                                articulo
+                ArticuloCanalDTO existente =
+                        repository.obtener(
+                                articulo.codigoArticulo,
+                                String.valueOf(
+                                        articulo.codigoProveedor
+                                ),
+                                request.canal
                         );
 
-                ArticuloCanalDTO canal =
-                        new ArticuloCanalDTO();
+                if (existente == null) {
 
-                canal.codigoArticulo =
-                        articulo.codigoArticulo;
+                    TiendanubeProductoDTO producto =
+                            tiendanubeService.publicar(
+                                    articulo
+                            );
 
-                canal.codigoProveedor =
-                        String.valueOf(
-                                articulo.codigoProveedor
+                    if (
+                            producto == null
+                                    || producto.id == null
+                    ) {
+                        throw new RuntimeException(
+                                "Tiendanube no devolvió productId"
                         );
+                    }
 
-                canal.canal =
-                        "TIENDANUBE";
-
-                canal.idExterno =
-                        String.valueOf(
-                                producto.id
+                    if (
+                            producto.variants == null
+                                    || producto.variants.isEmpty()
+                                    || producto.variants.get(0).id == null
+                    ) {
+                        throw new RuntimeException(
+                                "Tiendanube no devolvió variantId"
                         );
+                    }
 
-                if (
-                        producto.variants != null
-                                && !producto.variants.isEmpty()
-                ) {
+                    ArticuloCanalDTO canal =
+                            new ArticuloCanalDTO();
+
+                    canal.codigoArticulo =
+                            articulo.codigoArticulo;
+
+                    canal.codigoProveedor =
+                            String.valueOf(
+                                    articulo.codigoProveedor
+                            );
+
+                    canal.canal =
+                            request.canal;
+
+                    canal.idExterno =
+                            String.valueOf(
+                                    producto.id
+                            );
 
                     canal.idVarianteExterna =
                             String.valueOf(
@@ -99,16 +124,107 @@ public class ArticuloCanalService {
                                             .get(0)
                                             .id
                             );
+
+                    canal.publicado = true;
+
+                    repository.guardar(
+                            canal
+                    );
+
+                    if (articulo.sincronizarImagen) {
+                        tiendanubeService.sincronizarImagen(
+                                canal.idExterno,
+                                articulo
+                        );
+                    }
+
+                    resultado.mensaje =
+                            "Publicado correctamente";
+
+                } else {
+
+                    try {
+
+                        tiendanubeService.actualizar(
+                                articulo,
+                                existente
+                        );
+
+                        if (articulo.sincronizarImagen) {
+
+                            tiendanubeService.sincronizarImagen(
+                                    existente.idExterno,
+                                    articulo
+                            );
+                        }
+
+                        repository.guardar(
+                                existente
+                        );
+
+                        resultado.mensaje =
+                                "Actualizado correctamente";
+
+                    } catch (TiendanubeNotFoundException ex) {
+
+                        TiendanubeProductoDTO producto =
+                                tiendanubeService.publicar(
+                                        articulo
+                                );
+
+                        if (
+                                producto == null
+                                        || producto.id == null
+                                        || producto.variants == null
+                                        || producto.variants.isEmpty()
+                                        || producto.variants.get(0).id == null
+                        ) {
+
+                            throw new RuntimeException(
+                                    "Tiendanube no devolvió los IDs del producto recreado"
+                            );
+                        }
+
+                        existente.idExterno =
+                                String.valueOf(
+                                        producto.id
+                                );
+
+                        existente.idVarianteExterna =
+                                String.valueOf(
+                                        producto.variants
+                                                .get(0)
+                                                .id
+                                );
+
+                        existente.publicado =
+                                true;
+
+                        repository.guardar(
+                                existente
+                        );
+
+                        if (articulo.sincronizarImagen) {
+
+                            tiendanubeService.sincronizarImagen(
+                                    existente.idExterno,
+                                    articulo
+                            );
+                        }
+
+                        resultado.mensaje =
+                                "Producto recreado correctamente";
+                    }
+
+                    repository.guardar(
+                            existente
+                    );
+
+                    resultado.mensaje =
+                            "Actualizado correctamente";
                 }
 
-                canal.publicado = true;
-
-                repository.guardar(canal);
-
                 resultado.correcto = true;
-
-                resultado.mensaje =
-                        "Publicado correctamente";
 
             } catch (Exception ex) {
 

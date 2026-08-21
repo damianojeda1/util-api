@@ -4,10 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 
 @ApplicationScoped
 public class ActualizacionRepository {
@@ -406,6 +403,33 @@ public class ActualizacionRepository {
                     versionFinal = 40;
                 }
 
+                if (ver < 41) {
+
+                    ejecutar(
+                            conn,
+                            """
+                                CREATE TABLE util.canalConfiguracion (
+                                      codigo serial PRIMARY KEY,
+                                      canal varchar NOT NULL,
+                                      storeId varchar,
+                                      accessToken varchar,
+                                      activo boolean DEFAULT true,
+                                      fechaVinculacion timestamp,
+                                      UNIQUE (canal)
+                                  );
+                            """
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            41,
+                            "V41"
+                    );
+
+                    versionFinal = 41;
+                }
+
                 conn.commit();
 
                 return versionFinal;
@@ -429,12 +453,39 @@ public class ActualizacionRepository {
     private void ejecutar(
             Connection conn,
             String sql
-    ) throws SQLException {
+    ) {
 
-        try (PreparedStatement ps =
-                     conn.prepareStatement(sql)) {
+        Savepoint savepoint = null;
 
-            ps.executeUpdate();
+        try {
+
+            savepoint = conn.setSavepoint();
+
+            try (PreparedStatement ps =
+                         conn.prepareStatement(sql)) {
+
+                ps.executeUpdate();
+            }
+
+            conn.releaseSavepoint(savepoint);
+
+        } catch (SQLException ex) {
+
+            try {
+
+                if (savepoint != null) {
+                    conn.rollback(savepoint);
+                    conn.releaseSavepoint(savepoint);
+                }
+
+            } catch (SQLException rollbackEx) {
+                rollbackEx.printStackTrace();
+            }
+
+            System.out.println(
+                    "Error ejecutando actualización: "
+                            + ex.getMessage()
+            );
         }
     }
 

@@ -10,6 +10,10 @@ public class ArticuloSincronizacionDTO {
     public double precio;
     public double stock;
 
+    public boolean sincronizarImagen;
+    public String imagenBase64;
+    public String nombreImagen;
+
     public ArticuloSincronizacionDTO() {
     }
 }
