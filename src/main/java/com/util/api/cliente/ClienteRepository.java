@@ -21,35 +21,58 @@ public class ClienteRepository {
             "NOT_FOUND";
 
     private static final String SELECT_CLIENTE_COMPLETO = """
-            SELECT
-                cli.codigo,
-                cli.razonsocial,
-                cli.codigoidentificacion,
-                cli.ingresosbrutos,
-                cli.telfijo,
-                cli.telmovil,
-                cli.emailpersonal,
-                cli.emailfacturacion,
-                cli.domicilio,
-                cli.localidad,
-                cli.observacion,
-                cli.limitectacte,
-                cli.ctacte,
-                cli.habilitado,
-                COALESCE(civa.codigo, -1) AS condicioniva,
-                COALESCE(civa.descripcion, '') AS nomcondicioniva,
-                COALESCE(usr.codigo, -1) AS vendedor,
-                COALESCE(usr.nombre, '') AS nomvendedor,
-                COALESCE(tipoident.codigo, -1) AS codident,
-                COALESCE(tipoident.descripcion, '') AS nomident
-            FROM util.cliente cli
-            LEFT JOIN util.tipoidentificacion tipoident
-                   ON tipoident.codigo = cli.tipoidentificacion
-            LEFT JOIN util.condicioniva civa
-                   ON civa.codigo = cli.condicioniva
-            LEFT JOIN util.usuario usr
-                   ON usr.codigo = cli.vendedor
-            """;
+        SELECT
+            cli.codigo,
+            cli.razonsocial,
+            cli.codigoidentificacion,
+            cli.ingresosbrutos,
+            cli.telfijo,
+            cli.telmovil,
+            cli.emailpersonal,
+            cli.emailfacturacion,
+            cli.domicilio,
+            cli.localidad,
+            cli.observacion,
+            cli.limitectacte,
+            cli.ctacte,
+            cli.habilitado,
+
+            COALESCE(civa.codigo, -1) AS condicioniva,
+            COALESCE(civa.descripcion, '') AS nomcondicioniva,
+
+            COALESCE(usr.codigo, -1) AS vendedor,
+            COALESCE(usr.nombre, '') AS nomvendedor,
+
+            COALESCE(tipoident.codigo, -1) AS codident,
+            COALESCE(tipoident.descripcion, '') AS nomident,
+
+            loc.cp AS localidad_codigopostal,
+            loc.nombre AS localidad_nombre,
+            prov.id AS provincia_id,
+            prov.nombre AS provincia_nombre,
+            pais.id AS pais_id,
+            pais.nombre AS pais_nombre
+
+        FROM util.cliente cli
+
+        LEFT JOIN util.tipoidentificacion tipoident
+               ON tipoident.codigo = cli.tipoidentificacion
+
+        LEFT JOIN util.condicioniva civa
+               ON civa.codigo = cli.condicioniva
+
+        LEFT JOIN util.usuario usr
+               ON usr.codigo = cli.vendedor
+
+        LEFT JOIN util.localidad loc
+               ON loc.id = cli.localidad
+
+       LEFT JOIN util.provincia prov
+                  ON prov.id = loc.provincia
+
+       LEFT JOIN util.pais pais
+              ON pais.id = prov.pais
+       """;
 
     private static final String INSERT_CLIENTE = """
             INSERT INTO util.cliente (
@@ -472,6 +495,24 @@ public class ClienteRepository {
 
         cliente.localidadId =
                 rs.getInt("localidad");
+
+        cliente.localidadCodigoPostal =
+                rs.getString("localidad_codigopostal");
+
+        cliente.localidadNombre =
+                rs.getString("localidad_nombre");
+
+        cliente.provinciaId =
+                rs.getInt("provincia_id");
+
+        cliente.provinciaNombre =
+                rs.getString("provincia_nombre");
+
+        cliente.paisId =
+                rs.getInt("pais_id");
+
+        cliente.paisNombre =
+                rs.getString("pais_nombre");
 
         cliente.observacion =
                 rs.getString("observacion");

@@ -30,16 +30,10 @@ public class ReciboRepository {
             TicketDTO.GuardarReciboRequest request
     ) {
 
-        if (request == null) {
-            return TicketDTO.GuardarReciboResponse.error(
-                    "Los datos del recibo son obligatorios"
-            );
-        }
+        String error = validarRecibo(request);
 
-        if (request.caja <= 0) {
-            return TicketDTO.GuardarReciboResponse.error(
-                    "No hay una caja abierta"
-            );
+        if (error != null) {
+            return TicketDTO.GuardarReciboResponse.error(error);
         }
 
         try (Connection cn = dataSource.getConnection()) {
@@ -50,38 +44,15 @@ public class ReciboRepository {
             try {
                 cn.setAutoCommit(false);
 
-                double total = request.tipo == 1
-                        ? request.total
-                        : -Math.abs(request.total);
-
-                int codigoMovimientoCaja =
-                        insertarMovimientoRecibo(
+                TicketDTO.GuardarReciboResponse response =
+                        guardarRecibo(
                                 cn,
-                                request.caja,
-                                total
+                                request
                         );
-
-                int codigoRecibo =
-                        insertarRecibo(
-                                cn,
-                                request,
-                                codigoMovimientoCaja,
-                                total
-                        );
-
-                insertarPagosRecibo(
-                        cn,
-                        request,
-                        codigoRecibo,
-                        codigoMovimientoCaja
-                );
 
                 cn.commit();
 
-                return TicketDTO.GuardarReciboResponse.ok(
-                        codigoRecibo,
-                        codigoMovimientoCaja
-                );
+                return response;
 
             } catch (Exception ex) {
 
@@ -111,6 +82,50 @@ public class ReciboRepository {
                             + mensaje(ex)
             );
         }
+    }
+
+    public TicketDTO.GuardarReciboResponse guardarRecibo(
+            Connection cn,
+            TicketDTO.GuardarReciboRequest request
+    ) throws SQLException {
+
+        String error = validarRecibo(request);
+
+        if (error != null) {
+            throw new SQLException(error);
+        }
+
+        double total =
+                request.tipo == 1
+                        ? request.total
+                        : -Math.abs(request.total);
+
+        int codigoMovimientoCaja =
+                insertarMovimientoRecibo(
+                        cn,
+                        request.caja,
+                        total
+                );
+
+        int codigoRecibo =
+                insertarRecibo(
+                        cn,
+                        request,
+                        codigoMovimientoCaja,
+                        total
+                );
+
+        insertarPagosRecibo(
+                cn,
+                request,
+                codigoRecibo,
+                codigoMovimientoCaja
+        );
+
+        return TicketDTO.GuardarReciboResponse.ok(
+                codigoRecibo,
+                codigoMovimientoCaja
+        );
     }
 
     private int insertarMovimientoRecibo(
@@ -321,6 +336,21 @@ public class ReciboRepository {
 
             ps.executeBatch();
         }
+    }
+
+    private String validarRecibo(
+            TicketDTO.GuardarReciboRequest request
+    ) {
+
+        if (request == null) {
+            return "Los datos del recibo son obligatorios";
+        }
+
+        if (request.caja <= 0) {
+            return "No hay una caja abierta";
+        }
+
+        return null;
     }
 
     // -------------------------------------------------------------------------

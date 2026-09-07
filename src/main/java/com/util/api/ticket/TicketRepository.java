@@ -30,24 +30,10 @@ public class TicketRepository {
             TicketDTO.GuardarTicketRequest request
     ) {
 
-        if (request == null) {
-            return TicketDTO.GuardarTicketResponse.error(
-                    "Los datos del ticket son obligatorios"
-            );
-        }
+        String error = validarTicket(request);
 
-        if (request.cliente <= 0) {
-            return TicketDTO.GuardarTicketResponse.error(
-                    "El cliente es obligatorio"
-            );
-        }
-
-        if (request.items == null
-                || request.items.isEmpty()) {
-
-            return TicketDTO.GuardarTicketResponse.error(
-                    "El ticket no contiene artículos"
-            );
+        if (error != null) {
+            return TicketDTO.GuardarTicketResponse.error(error);
         }
 
         try (Connection cn = dataSource.getConnection()) {
@@ -58,23 +44,15 @@ public class TicketRepository {
             try {
                 cn.setAutoCommit(false);
 
-                int codigoTicket =
-                        insertarTicket(
+                TicketDTO.GuardarTicketResponse response =
+                        guardarTicket(
                                 cn,
                                 request
                         );
 
-                insertarItemsTicket(
-                        cn,
-                        codigoTicket,
-                        request.items
-                );
-
                 cn.commit();
 
-                return TicketDTO.GuardarTicketResponse.ok(
-                        codigoTicket
-                );
+                return response;
 
             } catch (Exception ex) {
 
@@ -86,6 +64,7 @@ public class TicketRepository {
                 );
 
             } finally {
+
                 restaurarAutoCommit(
                         cn,
                         autoCommitOriginal
@@ -99,6 +78,34 @@ public class TicketRepository {
                             + mensaje(ex)
             );
         }
+    }
+
+    public TicketDTO.GuardarTicketResponse guardarTicket(
+            Connection cn,
+            TicketDTO.GuardarTicketRequest request
+    ) throws SQLException {
+
+        String error = validarTicket(request);
+
+        if (error != null) {
+            throw new SQLException(error);
+        }
+
+        int codigoTicket =
+                insertarTicket(
+                        cn,
+                        request
+                );
+
+        insertarItemsTicket(
+                cn,
+                codigoTicket,
+                request.items
+        );
+
+        return TicketDTO.GuardarTicketResponse.ok(
+                codigoTicket
+        );
     }
 
     private int insertarTicket(
@@ -300,6 +307,27 @@ public class TicketRepository {
 
             ps.executeBatch();
         }
+    }
+
+    private String validarTicket(
+            TicketDTO.GuardarTicketRequest request
+    ) {
+
+        if (request == null) {
+            return "Los datos del ticket son obligatorios";
+        }
+
+        if (request.cliente <= 0) {
+            return "El cliente es obligatorio";
+        }
+
+        if (request.items == null
+                || request.items.isEmpty()) {
+
+            return "El ticket no contiene artículos";
+        }
+
+        return null;
     }
 
     // -------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 package com.util.api.tiendanube;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.util.api.canalconfiguracion.CanalConfiguracionDTO;
+import com.util.api.canalconfiguracion.CanalConfiguracionService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -17,9 +19,66 @@ public class TiendanubeClient {
     TiendanubeConfig config;
 
     @Inject
+    CanalConfiguracionService canalConfiguracionService;
+
+    @Inject
     ObjectMapper objectMapper;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
+
+    private CanalConfiguracionDTO obtenerConfiguracion() {
+
+        try {
+
+            CanalConfiguracionDTO configuracion =
+                    canalConfiguracionService.obtener(
+                            "TIENDANUBE"
+                    );
+
+            if (configuracion == null) {
+                throw new RuntimeException(
+                        "Tiendanube no está vinculada"
+                );
+            }
+
+            if (!configuracion.activo) {
+                throw new RuntimeException(
+                        "La vinculación con Tiendanube está deshabilitada"
+                );
+            }
+
+            if (
+                    configuracion.storeId == null
+                            || configuracion.storeId.isBlank()
+            ) {
+                throw new RuntimeException(
+                        "Tiendanube no tiene Store ID configurado"
+                );
+            }
+
+            if (
+                    configuracion.accessToken == null
+                            || configuracion.accessToken.isBlank()
+            ) {
+                throw new RuntimeException(
+                        "Tiendanube no tiene Access Token configurado"
+                );
+            }
+
+            return configuracion;
+
+        } catch (RuntimeException ex) {
+
+            throw ex;
+
+        } catch (Exception ex) {
+
+            throw new RuntimeException(
+                    "Error obteniendo configuración de Tiendanube",
+                    ex
+            );
+        }
+    }
 
     public TiendanubeProductoDTO crearProducto(
             TiendanubeProductoRequest producto
@@ -27,32 +86,43 @@ public class TiendanubeClient {
 
         try {
 
+            CanalConfiguracionDTO configuracion =
+                    obtenerConfiguracion();
+
             String url =
                     config.apiUrl()
                             + "/"
-                            + config.storeId()
+                            + configuracion.storeId
                             + "/products";
 
-            String json = objectMapper.writeValueAsString(producto);
+            String json =
+                    objectMapper.writeValueAsString(
+                            producto
+                    );
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header(
-                            "Authorization",
-                            "Bearer " + config.token()
-                    )
-                    .header(
-                            "User-Agent",
-                            "Util Gestion (utilgestion)"
-                    )
-                    .header(
-                            "Content-Type",
-                            "application/json"
-                    )
-                    .POST(
-                            HttpRequest.BodyPublishers.ofString(json)
-                    )
-                    .build();
+            HttpRequest request =
+                    HttpRequest.newBuilder()
+                            .uri(
+                                    URI.create(url)
+                            )
+                            .header(
+                                    "Authorization",
+                                    "Bearer "
+                                            + configuracion.accessToken
+                            )
+                            .header(
+                                    "User-Agent",
+                                    "Util Gestion (utilgestion)"
+                            )
+                            .header(
+                                    "Content-Type",
+                                    "application/json"
+                            )
+                            .POST(
+                                    HttpRequest.BodyPublishers
+                                            .ofString(json)
+                            )
+                            .build();
 
             HttpResponse<String> response =
                     httpClient.send(
@@ -60,8 +130,10 @@ public class TiendanubeClient {
                             HttpResponse.BodyHandlers.ofString()
                     );
 
-            if (response.statusCode() < 200
-                    || response.statusCode() >= 300) {
+            if (
+                    response.statusCode() < 200
+                            || response.statusCode() >= 300
+            ) {
 
                 throw new RuntimeException(
                         "Error Tiendanube HTTP "
@@ -77,9 +149,11 @@ public class TiendanubeClient {
             );
 
         } catch (RuntimeException ex) {
+
             throw ex;
 
         } catch (Exception ex) {
+
             throw new RuntimeException(
                     "Error creando producto en Tiendanube: "
                             + ex.getMessage(),
@@ -95,11 +169,13 @@ public class TiendanubeClient {
     ) {
 
         try {
+            CanalConfiguracionDTO configuracion =
+                    obtenerConfiguracion();
 
             String url =
                     config.apiUrl()
                             + "/"
-                            + config.storeId()
+                            + configuracion.storeId
                             + "/products/"
                             + productId
                             + "/variants/"
@@ -113,7 +189,7 @@ public class TiendanubeClient {
                             .uri(URI.create(url))
                             .header(
                                     "Authorization",
-                                    "Bearer " + config.token()
+                                    "Bearer " + configuracion.accessToken
                             )
                             .header(
                                     "User-Agent",
@@ -180,11 +256,13 @@ public class TiendanubeClient {
     ) {
 
         try {
+            CanalConfiguracionDTO configuracion =
+                    obtenerConfiguracion();
 
             String url =
                     config.apiUrl()
                             + "/"
-                            + config.storeId()
+                            + configuracion.storeId
                             + "/products/"
                             + productId
                             + "/images";
@@ -201,7 +279,7 @@ public class TiendanubeClient {
                             )
                             .header(
                                     "Authorization",
-                                    "Bearer " + config.token()
+                                    "Bearer " + configuracion.accessToken
                             )
                             .header(
                                     "User-Agent",
@@ -261,11 +339,13 @@ public class TiendanubeClient {
     ) {
 
         try {
+            CanalConfiguracionDTO configuracion =
+                    obtenerConfiguracion();
 
             String url =
                     config.apiUrl()
                             + "/"
-                            + config.storeId()
+                            + configuracion.storeId
                             + "/products/"
                             + productId
                             + "/images";
@@ -275,7 +355,7 @@ public class TiendanubeClient {
                             .uri(URI.create(url))
                             .header(
                                     "Authorization",
-                                    "Bearer " + config.token()
+                                    "Bearer " + configuracion.accessToken
                             )
                             .header(
                                     "User-Agent",
@@ -332,11 +412,13 @@ public class TiendanubeClient {
     ) {
 
         try {
+            CanalConfiguracionDTO configuracion =
+                    obtenerConfiguracion();
 
             String url =
                     config.apiUrl()
                             + "/"
-                            + config.storeId()
+                            + configuracion.storeId
                             + "/products/"
                             + productId
                             + "/images/"
@@ -347,7 +429,7 @@ public class TiendanubeClient {
                             .uri(URI.create(url))
                             .header(
                                     "Authorization",
-                                    "Bearer " + config.token()
+                                    "Bearer " + configuracion.accessToken
                             )
                             .header(
                                     "User-Agent",

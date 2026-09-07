@@ -454,7 +454,12 @@ public class ProveedorExternoSincronizacionRepository {
                         + " (articulocodigo,\n"
                         + "  articulosempaquedetallecodigo,\n"
                         + "  empaquecantidad)\n"
-                        + " VALUES (?, ?, ?)";
+                        + " SELECT ?, ?, ?\n"
+                        + " WHERE EXISTS (\n"
+                        + "   SELECT 1\n"
+                        + "   FROM fcentral.articulos\n"
+                        + "   WHERE codigo = ?\n"
+                        + " )";
 
         int cantidad = 0;
 
@@ -465,15 +470,22 @@ public class ProveedorExternoSincronizacionRepository {
                 PreparedStatement destino =
                         local.prepareStatement(insert)
         ) {
+
             while (rs.next()) {
+
+                String codigoArticulo =
+                        rs.getString("ArticuloCodigo");
+
                 destino.setString(
                         1,
-                        rs.getString("ArticuloCodigo")
+                        codigoArticulo
                 );
+
                 destino.setInt(
                         2,
                         rs.getInt("EmpaqueID")
                 );
+
                 destino.setDouble(
                         3,
                         rs.getDouble(
@@ -481,11 +493,21 @@ public class ProveedorExternoSincronizacionRepository {
                         )
                 );
 
+                destino.setString(
+                        4,
+                        codigoArticulo
+                );
+
                 destino.addBatch();
-                cantidad++;
             }
 
-            destino.executeBatch();
+            int[] resultados = destino.executeBatch();
+
+            for (int resultado : resultados) {
+                if (resultado > 0) {
+                    cantidad++;
+                }
+            }
         }
 
         return cantidad;

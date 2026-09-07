@@ -29,6 +29,12 @@ public final class ClienteDTO {
         public String vendedorNombre;
 
         public int localidadId;
+        public String localidadCodigoPostal;
+        public String localidadNombre;
+        public int provinciaId;
+        public String provinciaNombre;
+        public int paisId;
+        public String paisNombre;
 
         public String observacion;
         public double limiteCuentaCorriente;
@@ -164,6 +170,54 @@ public final class ClienteDTO {
 
         public void setLocalidadId(int localidadId) {
             this.localidadId = localidadId;
+        }
+
+        public String getLocalidadCodigoPostal() {
+            return localidadCodigoPostal;
+        }
+
+        public void setLocalidadCodigoPostal(String localidadCodigoPostal) {
+            this.localidadCodigoPostal = localidadCodigoPostal;
+        }
+
+        public String getLocalidadNombre() {
+            return localidadNombre;
+        }
+
+        public void setLocalidadNombre(String localidadNombre) {
+            this.localidadNombre = localidadNombre;
+        }
+
+        public int getProvinciaId() {
+            return provinciaId;
+        }
+
+        public void setProvinciaId(int provinciaId) {
+            this.provinciaId = provinciaId;
+        }
+
+        public String getProvinciaNombre() {
+            return provinciaNombre;
+        }
+
+        public void setProvinciaNombre(String provinciaNombre) {
+            this.provinciaNombre = provinciaNombre;
+        }
+
+        public int getPaisId() {
+            return paisId;
+        }
+
+        public void setPaisId(int paisId) {
+            this.paisId = paisId;
+        }
+
+        public String getPaisNombre() {
+            return paisNombre;
+        }
+
+        public void setPaisNombre(String paisNombre) {
+            this.paisNombre = paisNombre;
         }
 
         public String getObservacion() {

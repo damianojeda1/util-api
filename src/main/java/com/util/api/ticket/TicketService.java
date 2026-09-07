@@ -13,6 +13,19 @@ public class TicketService {
     @Inject
     TicketRepository repository;
 
+    @Inject
+    VentaRepository ventaRepository;
+
+    // -------------------------------------------------------------------------
+    // VENTA
+    // -------------------------------------------------------------------------
+
+    public TicketDTO.GuardarVentaResponse guardarVenta(
+            TicketDTO.GuardarVentaRequest request
+    ) {
+        return ventaRepository.guardarVenta(request);
+    }
+
     // -------------------------------------------------------------------------
     // TICKETS
     // -------------------------------------------------------------------------

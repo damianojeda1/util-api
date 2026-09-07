@@ -430,6 +430,28 @@ public class ActualizacionRepository {
                     versionFinal = 41;
                 }
 
+                if (ver < 42) {
+
+                    ejecutar(
+                            conn,
+                            """
+                                ALTER TABLE util.item
+                                            ALTER COLUMN cantidad
+                                            TYPE numeric(16,6)
+                                            USING cantidad::numeric(16,6);
+                            """
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            42,
+                            "V42"
+                    );
+
+                    versionFinal = 42;
+                }
+
                 conn.commit();
 
                 return versionFinal;

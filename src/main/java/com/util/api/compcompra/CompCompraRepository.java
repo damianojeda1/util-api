@@ -790,64 +790,65 @@ public class CompCompraRepository {
                 calendario.getTime();
 
         String sql = """
-                SELECT origen,
-                       codigo_tipo,
-                       descripcion,
+            SELECT origen,
+                   codigo_tipo,
+                   descripcion,
+                   codigo,
+                   fecha,
+                   total,
+                   id_movimiento_caja,
+                   util.saldoProvHasta(?, CURRENT_DATE) AS saldo_actual
+            FROM (
+                SELECT 3 AS origen,
+                       1 AS codigo_tipo,
+                       'Saldo Ant.' AS descripcion,
+                       0 AS codigo,
+                       ?::date AS fecha,
+                       COALESCE(
+                           util.saldoProvHasta(?, ?),
+                           0
+                       ) AS total,
+                       ? AS proveedor,
+                       0 AS id_movimiento_caja
+
+                UNION ALL
+
+                SELECT 1 AS origen,
+                       codigocompcompra AS codigo_tipo,
+                       CONCAT(
+                           '  ',
+                           letra,
+                           ' ',
+                           centro,
+                           ' - ',
+                           numero
+                       ) AS descripcion,
+                       id AS codigo,
+                       fechacomprobante AS fecha,
+                       total,
+                       nroproveedor AS proveedor,
+                       0 AS id_movimiento_caja
+                FROM util.comprobantecompracab
+                WHERE CAST(fechacomprobante AS DATE) >= ?
+
+                UNION ALL
+
+                SELECT 2 AS origen,
+                       tipo AS codigo_tipo,
+                       CONCAT('  ', codigo) AS descripcion,
                        codigo,
                        fecha,
                        total,
-                       id_movimiento_caja
-                FROM (
-                    SELECT 3 AS origen,
-                           1 AS codigo_tipo,
-                           'Saldo Ant.' AS descripcion,
-                           0 AS codigo,
-                           ?::timestamp AS fecha,
-                           COALESCE(
-                               util.saldoProvHasta(?, ?),
-                               0
-                           ) AS total,
-                           ? AS proveedor,
-                           0 AS id_movimiento_caja
-
-                    UNION ALL
-
-                    SELECT 1 AS origen,
-                           codigocompcompra AS codigo_tipo,
-                           CONCAT(
-                               '  ',
-                               letra,
-                               ' ',
-                               centro,
-                               ' - ',
-                               numero
-                           ) AS descripcion,
-                           id AS codigo,
-                           fechacomprobante AS fecha,
-                           total,
-                           nroproveedor AS proveedor,
-                           0 AS id_movimiento_caja
-                    FROM util.comprobantecompracab
-                    WHERE CAST(fechacomprobante AS DATE) >= ?
-
-                    UNION ALL
-
-                    SELECT 2 AS origen,
-                           tipo AS codigo_tipo,
-                           CONCAT('  ', codigo) AS descripcion,
-                           codigo,
-                           fecha,
-                           total,
-                           idproveedor AS proveedor,
-                           idmovcaja AS id_movimiento_caja
-                    FROM util.comprobantecomprapago
-                    WHERE CAST(fecha AS DATE) >= ?
-                ) movimientos
-                WHERE proveedor = ?
-                  AND CAST(fecha AS DATE) <= ?
-                ORDER BY fecha ASC,
-                         codigo ASC
-                """;
+                       idproveedor AS proveedor,
+                       idmovcaja AS id_movimiento_caja
+                FROM util.comprobantecomprapago
+                WHERE CAST(fecha AS DATE) >= ?
+            ) movimientos
+            WHERE proveedor = ?
+              AND CAST(fecha AS DATE) <= ?
+            ORDER BY fecha ASC,
+                     codigo ASC
+            """;
 
         try (
                 Connection connection =
@@ -858,21 +859,19 @@ public class CompCompraRepository {
         ) {
             int index = 1;
 
-            ps.setTimestamp(
-                    index++,
-                    new Timestamp(fechaAnterior.getTime())
-            );
-
+            // saldo actual
             ps.setInt(
                     index++,
                     codigoProveedor
             );
 
-            ps.setTimestamp(
+            // fecha fila Saldo Ant.
+            ps.setDate(
                     index++,
-                    new Timestamp(fechaAnterior.getTime())
+                    new Date(fechaAnterior.getTime())
             );
 
+            // saldo anterior
             ps.setInt(
                     index++,
                     codigoProveedor
@@ -880,28 +879,46 @@ public class CompCompraRepository {
 
             ps.setDate(
                     index++,
-                    new Date(desde.getTime())
+                    new Date(fechaAnterior.getTime())
             );
 
-            ps.setDate(
-                    index++,
-                    new Date(desde.getTime())
-            );
-
+            // proveedor fila saldo anterior
             ps.setInt(
                     index++,
                     codigoProveedor
             );
 
+            // compras desde
+            ps.setDate(
+                    index++,
+                    new Date(desde.getTime())
+            );
+
+            // pagos desde
+            ps.setDate(
+                    index++,
+                    new Date(desde.getTime())
+            );
+
+            // proveedor
+            ps.setInt(
+                    index++,
+                    codigoProveedor
+            );
+
+            // hasta
             ps.setDate(
                     index,
                     new Date(hasta.getTime())
             );
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 double saldoAcumulado = 0;
+                double saldoActual = 0;
 
                 while (rs.next()) {
+
                     CompCompraDTO.MovimientoCuentaCorrienteDTO movimiento =
                             new CompCompraDTO.MovimientoCuentaCorrienteDTO();
 
@@ -926,7 +943,11 @@ public class CompCompraRepository {
                     String detalle =
                             rs.getString("descripcion");
 
+                    saldoActual =
+                            rs.getDouble("saldo_actual");
+
                     if (movimiento.origen == 1) {
+
                         boolean esCompra =
                                 movimiento.codigoTipo == 1;
 
@@ -943,6 +964,7 @@ public class CompCompraRepository {
                         }
 
                     } else if (movimiento.origen == 2) {
+
                         boolean esPagoCompra =
                                 movimiento.codigoTipo == 1;
 
@@ -959,6 +981,7 @@ public class CompCompraRepository {
                         }
 
                     } else {
+
                         movimiento.descripcion =
                                 detalle;
 
@@ -1000,7 +1023,7 @@ public class CompCompraRepository {
 
                 resultado.saldo =
                         redondear(
-                                saldoAcumulado,
+                                saldoActual,
                                 2
                         );
             }

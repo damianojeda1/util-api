@@ -24,6 +24,38 @@ public class TicketController {
     TicketService service;
 
     // -------------------------------------------------------------------------
+    // VENTA
+    // -------------------------------------------------------------------------
+
+    @POST
+    @Path("/venta")
+    public Response guardarVenta(
+            TicketDTO.GuardarVentaRequest request
+    ) {
+
+        TicketDTO.GuardarVentaResponse response =
+                service.guardarVenta(request);
+
+        if (response == null) {
+            return Response.serverError()
+                    .entity(
+                            TicketDTO.GuardarVentaResponse.error(
+                                    "Error inesperado guardando venta"
+                            )
+                    )
+                    .build();
+        }
+
+        if (!response.ok) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(response)
+                    .build();
+        }
+
+        return Response.ok(response).build();
+    }
+
+    // -------------------------------------------------------------------------
     // GUARDAR TICKET
     // -------------------------------------------------------------------------
 

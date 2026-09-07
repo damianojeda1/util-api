@@ -3,11 +3,8 @@ package com.util.api.tiendanube;
 import com.util.api.canalconfiguracion.CanalConfiguracionDTO;
 import com.util.api.canalconfiguracion.CanalConfiguracionService;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.*;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -28,26 +25,164 @@ public class TiendanubeController {
 
     @GET
     @Path("/callback")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.TEXT_HTML)
     public Response callback(
-            @QueryParam("code") String code
+            @QueryParam("code") String code,
+            @QueryParam("state") String state
     ) {
 
-        if (code == null || code.isBlank()) {
-            return Response.status(
-                            Response.Status.BAD_REQUEST
-                    )
+        try {
+
+            if (
+                    code == null
+                            || code.isBlank()
+            ) {
+
+                return Response
+                        .status(
+                                Response.Status.BAD_REQUEST
+                        )
+                        .entity(
+                                paginaError(
+                                        "No se recibió el código de autorización."
+                                )
+                        )
+                        .build();
+            }
+
+            if (
+                    state == null
+                            || state.isBlank()
+            ) {
+
+                return Response
+                        .status(
+                                Response.Status.BAD_REQUEST
+                        )
+                        .entity(
+                                paginaError(
+                                        "No se recibió el estado de vinculación."
+                                )
+                        )
+                        .build();
+            }
+
+            String tenantState =
+                    vinculacionService.consumirState(
+                            state
+                    );
+
+            if (tenantState == null) {
+
+                return Response
+                        .status(
+                                Response.Status.BAD_REQUEST
+                        )
+                        .entity(
+                                paginaError(
+                                        "La vinculación venció o ya fue utilizada."
+                                )
+                        )
+                        .build();
+            }
+
+            if (!tenantState.equals(tenantId)) {
+
+                return Response
+                        .status(
+                                Response.Status.BAD_REQUEST
+                        )
+                        .entity(
+                                paginaError(
+                                        "La vinculación no corresponde a este cliente."
+                                )
+                        )
+                        .build();
+            }
+
+            TiendanubeTokenDTO token =
+                    vinculacionService.obtenerToken(
+                            code
+                    );
+
+            if (
+                    token == null
+                            || token.access_token == null
+                            || token.access_token.isBlank()
+                            || token.user_id == null
+            ) {
+
+                throw new RuntimeException(
+                        "Tiendanube no devolvió los datos de vinculación."
+                );
+            }
+
+            canalConfiguracionService.guardar(
+                    "TIENDANUBE",
+                    String.valueOf(
+                            token.user_id
+                    ),
+                    token.access_token
+            );
+
+            return Response.ok(
+                    paginaExito()
+            ).build();
+
+        } catch (Exception ex) {
+
+            ex.printStackTrace();
+
+            return Response
+                    .serverError()
                     .entity(
-                            "No se recibió el parámetro code"
+                            paginaError(
+                                    "No se pudo vincular Tiendanube: "
+                                            + ex.getMessage()
+                            )
                     )
                     .build();
         }
+    }
 
-        return Response.ok(
-                "Código recibido correctamente:\n\n"
-                        + code
-                        + "\n\nCopialo y usalo para obtener el access token."
-        ).build();
+    private String paginaExito() {
+
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Util - Tiendanube</title>
+            </head>
+            <body style="font-family: Arial; text-align: center; padding-top: 80px;">
+                <h2>Tiendanube vinculada correctamente</h2>
+                <p>La tienda ya está conectada con Util.</p>
+                <p>Puede cerrar esta ventana y volver a Util.</p>
+            </body>
+            </html>
+            """;
+    }
+
+    private String paginaError(
+            String mensaje
+    ) {
+
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Util - Tiendanube</title>
+            </head>
+            <body style="font-family: Arial; text-align: center; padding-top: 80px;">
+                <h2>No se pudo vincular Tiendanube</h2>
+                <p>%s</p>
+                <p>Puede cerrar esta ventana y volver a Util.</p>
+            </body>
+            </html>
+            """.formatted(
+                mensaje
+        );
     }
 
     @GET
@@ -149,6 +284,32 @@ public class TiendanubeController {
                     .entity(
                             "Error iniciando vinculación con Tiendanube"
                     )
+                    .build();
+        }
+    }
+
+    @DELETE
+    @Path("/vinculacion")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response desvincular() {
+
+        try {
+
+            boolean eliminado =
+                    canalConfiguracionService.eliminar(
+                            "TIENDANUBE"
+                    );
+
+            return Response.ok(
+                    eliminado
+            ).build();
+
+        } catch (Exception ex) {
+
+            ex.printStackTrace();
+
+            return Response.serverError()
+                    .entity(false)
                     .build();
         }
     }

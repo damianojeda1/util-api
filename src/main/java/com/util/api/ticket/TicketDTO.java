@@ -10,6 +10,59 @@ public final class TicketDTO {
     }
 
     // -------------------------------------------------------------------------
+    // VENTA COMPLETA
+    // -------------------------------------------------------------------------
+
+    public static class GuardarVentaRequest {
+
+        public GuardarTicketRequest ticket;
+        public GuardarReciboRequest recibo;
+    }
+
+    public static class GuardarVentaResponse {
+
+        public boolean ok;
+
+        public int codigoTicket;
+        public int codigoRecibo;
+        public int codigoMovimientoCaja;
+
+        public String mensaje;
+
+        public static GuardarVentaResponse ok(
+                int codigoTicket,
+                int codigoRecibo,
+                int codigoMovimientoCaja
+        ) {
+            GuardarVentaResponse response =
+                    new GuardarVentaResponse();
+
+            response.ok = true;
+            response.codigoTicket = codigoTicket;
+            response.codigoRecibo = codigoRecibo;
+            response.codigoMovimientoCaja =
+                    codigoMovimientoCaja;
+
+            return response;
+        }
+
+        public static GuardarVentaResponse error(
+                String mensaje
+        ) {
+            GuardarVentaResponse response =
+                    new GuardarVentaResponse();
+
+            response.ok = false;
+            response.codigoTicket = -1;
+            response.codigoRecibo = -1;
+            response.codigoMovimientoCaja = -1;
+            response.mensaje = mensaje;
+
+            return response;
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // TICKET
     // -------------------------------------------------------------------------
 
