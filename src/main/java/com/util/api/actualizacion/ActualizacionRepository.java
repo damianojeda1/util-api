@@ -452,6 +452,48 @@ public class ActualizacionRepository {
                     versionFinal = 42;
                 }
 
+                if (ver < 43) {
+
+                    ejecutar(
+                            conn,
+                            """
+                                ALTER TABLE util.cliente
+                                ADD COLUMN mayorista boolean NOT NULL DEFAULT false;
+                                ALTER TABLE util.ticket
+                                ADD COLUMN mayorista boolean NOT NULL DEFAULT false;
+                            """
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            43,
+                            "V43"
+                    );
+
+                    versionFinal = 43;
+                }
+
+                if (ver < 44) {
+
+                    ejecutar(
+                            conn,
+                            """
+                                ALTER TABLE util.recibo
+                                ADD COLUMN mayorista boolean NOT NULL DEFAULT false;
+                            """
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            44,
+                            "V44"
+                    );
+
+                    versionFinal = 44;
+                }
+
                 conn.commit();
 
                 return versionFinal;

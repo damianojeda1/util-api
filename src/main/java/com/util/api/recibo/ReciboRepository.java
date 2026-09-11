@@ -100,6 +100,12 @@ public class ReciboRepository {
                         ? request.total
                         : -Math.abs(request.total);
 
+        boolean mayorista =
+                obtenerClienteMayorista(
+                        cn,
+                        request.cliente
+                );
+
         int codigoMovimientoCaja =
                 insertarMovimientoRecibo(
                         cn,
@@ -112,7 +118,8 @@ public class ReciboRepository {
                         cn,
                         request,
                         codigoMovimientoCaja,
-                        total
+                        total,
+                        mayorista
                 );
 
         insertarPagosRecibo(
@@ -126,6 +133,32 @@ public class ReciboRepository {
                 codigoRecibo,
                 codigoMovimientoCaja
         );
+    }
+
+    private boolean obtenerClienteMayorista(
+            Connection cn,
+            int codigoCliente
+    ) throws SQLException {
+
+        String sql = """
+            SELECT mayorista
+            FROM util.cliente
+            WHERE codigo = ?
+            """;
+
+        try (PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(1, codigoCliente);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (!rs.next()) {
+                    return false;
+                }
+
+                return rs.getBoolean("mayorista");
+            }
+        }
     }
 
     private int insertarMovimientoRecibo(
@@ -173,78 +206,51 @@ public class ReciboRepository {
             Connection cn,
             TicketDTO.GuardarReciboRequest request,
             int codigoMovimientoCaja,
-            double total
+            double total,
+            boolean mayorista
     ) throws SQLException {
 
         String sql = """
-                INSERT INTO util.recibo (
-                    tipo,
-                    fecha,
-                    total,
-                    idvendedor,
-                    nombrevendedor,
-                    idcliente,
-                    nombrecliente,
-                    idmovcaja,
-                    estado,
-                    observacion
-                )
-                VALUES (
-                    ?,
-                    NOW(),
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    10,
-                    ?
-                )
-                RETURNING codigo
-                """;
+            INSERT INTO util.recibo (
+                tipo,
+                fecha,
+                total,
+                idvendedor,
+                nombrevendedor,
+                idcliente,
+                nombrecliente,
+                idmovcaja,
+                estado,
+                observacion,
+                mayorista
+            )
+            VALUES (
+                ?,
+                NOW(),
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                10,
+                ?,
+                ?
+            )
+            RETURNING codigo
+            """;
 
         try (PreparedStatement ps = cn.prepareStatement(sql)) {
 
-            ps.setInt(
-                    1,
-                    request.tipo
-            );
-
-            ps.setBigDecimal(
-                    2,
-                    decimal(total)
-            );
-
-            ps.setInt(
-                    3,
-                    request.vendedor
-            );
-
-            ps.setString(
-                    4,
-                    texto(request.nombreVendedor)
-            );
-
-            ps.setInt(
-                    5,
-                    request.cliente
-            );
-
-            ps.setString(
-                    6,
-                    texto(request.nombreCliente)
-            );
-
-            ps.setInt(
-                    7,
-                    codigoMovimientoCaja
-            );
-
-            ps.setString(
-                    8,
-                    texto(request.observacion)
-            );
+            ps.setInt(1, request.tipo);
+            ps.setBigDecimal(2, decimal(total));
+            ps.setInt(3, request.vendedor);
+            ps.setString(4, texto(request.nombreVendedor));
+            ps.setInt(5, request.cliente);
+            ps.setString(6, texto(request.nombreCliente));
+            ps.setInt(7, codigoMovimientoCaja);
+            ps.setString(8, texto(request.observacion));
+            ps.setBoolean(9, mayorista);
 
             try (ResultSet rs = ps.executeQuery()) {
 

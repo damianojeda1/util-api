@@ -36,6 +36,7 @@ public class ClienteRepository {
             cli.limitectacte,
             cli.ctacte,
             cli.habilitado,
+            cli.mayorista,
 
             COALESCE(civa.codigo, -1) AS condicioniva,
             COALESCE(civa.descripcion, '') AS nomcondicioniva,
@@ -92,10 +93,11 @@ public class ClienteRepository {
                 observacion,
                 ctacte,
                 limitectacte,
-                habilitado
+                habilitado,
+                mayorista
             )
             VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """;
 
@@ -116,7 +118,8 @@ public class ClienteRepository {
                 observacion = ?,
                 ctacte = ?,
                 limitectacte = ?,
-                habilitado = ?
+                habilitado = ?,
+                mayorista = ?
             WHERE codigo = ?
             """;
 
@@ -526,6 +529,9 @@ public class ClienteRepository {
         cliente.habilitado =
                 rs.getBoolean("habilitado");
 
+        cliente.mayorista =
+                rs.getBoolean("mayorista");
+
         return cliente;
     }
 
@@ -604,6 +610,7 @@ public class ClienteRepository {
                     request.limiteCuentaCorriente
             );
             ps.setBoolean(17, request.habilitado);
+            ps.setBoolean(18, request.mayorista);
 
             int filasAfectadas =
                     ps.executeUpdate();
@@ -731,7 +738,8 @@ public class ClienteRepository {
                 request.limiteCuentaCorriente
         );
         ps.setBoolean(16, request.habilitado);
-        ps.setInt(17, codigo);
+        ps.setBoolean(17, request.mayorista);
+        ps.setInt(18, codigo);
     }
 
     private boolean esValido(

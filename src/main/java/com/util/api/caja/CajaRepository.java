@@ -254,8 +254,74 @@ public class CajaRepository {
         );
 
         calcularTotales(caja);
+        calcularTotalesPorTipoCliente(codigoCaja, caja.totales);
 
         return caja;
+    }
+
+    private void calcularTotalesPorTipoCliente(
+            int codigoCaja,
+            CajaDTO.TotalesDTO totales
+    ) throws SQLException {
+
+        String sql = """
+        SELECT
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN COALESCE(r.mayorista, FALSE) = FALSE
+                            THEN p.importe
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS estandar,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN COALESCE(r.mayorista, FALSE) = TRUE
+                            THEN p.importe
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS mayorista
+
+        FROM util.movimientocaja mov
+
+        INNER JOIN util.recibo r
+                ON r.idmovcaja = mov.codigo
+
+        INNER JOIN util.pago p
+                ON p.idmovcaja = mov.codigo
+
+        WHERE mov.idcaja = ?
+          AND mov.estado = ?
+          AND r.estado = ?
+          AND mov.tipomovcaja = 40
+        """;
+
+        try (
+                Connection cn = dataSource.getConnection();
+                PreparedStatement ps = cn.prepareStatement(sql)
+        ) {
+
+            ps.setInt(1, codigoCaja);
+            ps.setInt(2, ESTADO_ACTIVO);
+            ps.setInt(3, ESTADO_ACTIVO);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+                    totales.totalVentasEstandar =
+                            rs.getDouble("estandar");
+
+                    totales.totalVentasMayorista =
+                            rs.getDouble("mayorista");
+                }
+            }
+        }
     }
 
     private CajaDTO obtenerCaja(
@@ -1387,8 +1453,7 @@ public class CajaRepository {
                         + totales.egresosVirtuales;
 
         totales.totalVentas =
-                totales.ingresosManuales
-                        + totales.pagosFisicos
+                          totales.pagosFisicos
                         + totales.pagosVirtuales;
 
         caja.totales = totales;

@@ -91,10 +91,17 @@ public class TicketRepository {
             throw new SQLException(error);
         }
 
+        boolean mayorista =
+                obtenerClienteMayorista(
+                        cn,
+                        request.cliente
+                );
+
         int codigoTicket =
                 insertarTicket(
                         cn,
-                        request
+                        request,
+                        mayorista
                 );
 
         insertarItemsTicket(
@@ -108,9 +115,39 @@ public class TicketRepository {
         );
     }
 
+    private boolean obtenerClienteMayorista(
+            Connection cn,
+            int codigoCliente
+    ) throws SQLException {
+
+        String sql = """
+            SELECT mayorista
+            FROM util.cliente
+            WHERE codigo = ?
+            """;
+
+        try (PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(
+                    1,
+                    codigoCliente
+            );
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (!rs.next()) {
+                    return false;
+                }
+
+                return rs.getBoolean("mayorista");
+            }
+        }
+    }
+
     private int insertarTicket(
             Connection cn,
-            TicketDTO.GuardarTicketRequest request
+            TicketDTO.GuardarTicketRequest request,
+            boolean mayorista
     ) throws SQLException {
 
         String sql = """
@@ -126,7 +163,8 @@ public class TicketRepository {
                     idcliente,
                     nombrecliente,
                     estado,
-                    observacion
+                    observacion,
+                    mayorista
                 )
                 VALUES (
                     ?,
@@ -140,6 +178,7 @@ public class TicketRepository {
                     ?,
                     ?,
                     0,
+                    ?,
                     ?
                 )
                 RETURNING codigo
@@ -189,6 +228,11 @@ public class TicketRepository {
             ps.setString(
                     8,
                     texto(request.observacion)
+            );
+
+            ps.setBoolean(
+                    9,
+                    mayorista
             );
 
             try (ResultSet rs = ps.executeQuery()) {

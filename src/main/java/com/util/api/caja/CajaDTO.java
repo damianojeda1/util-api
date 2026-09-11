@@ -154,6 +154,8 @@ public class CajaDTO {
         public double totalFisico;
         public double totalVirtual;
         public double totalVentas;
+        public double totalVentasEstandar;
+        public double totalVentasMayorista;
 
         public TotalesDTO() {
         }

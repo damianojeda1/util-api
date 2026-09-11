@@ -40,6 +40,7 @@ public final class ClienteDTO {
         public double limiteCuentaCorriente;
         public boolean cuentaCorriente;
         public boolean habilitado;
+        public boolean mayorista;
 
         public Response() {
         }
@@ -251,6 +252,14 @@ public final class ClienteDTO {
         public void setHabilitado(boolean habilitado) {
             this.habilitado = habilitado;
         }
+
+        public boolean isMayorista() {
+            return mayorista;
+        }
+
+        public void setMayorista(boolean mayorista) {
+            this.mayorista = mayorista;
+        }
     }
 
     public static class CrearRequest {
@@ -279,6 +288,7 @@ public final class ClienteDTO {
         public double montoInicialCuentaCorriente;
 
         public boolean habilitado;
+        public boolean mayorista;
 
         /*
          * Usuario logueado que realiza la operación.
@@ -317,6 +327,7 @@ public final class ClienteDTO {
         public double limiteCuentaCorriente;
 
         public boolean habilitado;
+        public boolean mayorista;
 
         public ActualizarRequest() {
         }
