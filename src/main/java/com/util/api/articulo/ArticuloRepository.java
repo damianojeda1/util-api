@@ -185,69 +185,132 @@ public class ArticuloRepository {
         StringBuilder sql = new StringBuilder();
 
         sql.append("""
-        SELECT art.codigo
-             , art.descripcion
-             , art.descripcionpropia
-             , art.unidadcompra
-             , art.multiplicadorcompra
-             , art.costo
-             , art.margenextra
-             , art.llevastock
-             , art.stock
-             , art.stockminimo
-             , art.articulopadre
-             , art.articulopadreproveedor
-             , art.hijos
-             , art.observacion
-             , art.fechaalta
-             , art.origen
-             , art.habilitado
-             , art.estadoproveedor
-             , imp.codigo AS codImp
-             , imp.nombre AS nomImp
-             , imp.alicuota AS aliImp
-             , cat.codigo AS codCat
-             , cat.nombre AS nomCat
-             , uvent.codigo AS codUVent
-             , uvent.nombre AS nomUVent
-             , prov.codigo AS codProv
-             , prov.razonsocial AS nomProv
-        FROM util.articulo art
-        INNER JOIN util.proveedor prov ON art.proveedor = prov.codigo
-        LEFT JOIN util.impuesto imp ON art.impuesto = imp.codigo
-        LEFT JOIN util.categoriaarticulo cat ON art.categoria = cat.codigo
-        LEFT JOIN util.unidadventa uvent ON art.unidadventa = uvent.codigo
-        WHERE art.habilitado = TRUE
-          AND prov.habilitado = TRUE
-          AND art.codigo <> '0'
-          AND art.costo > 0
-          AND NOT EXISTS (
-              SELECT 1
-              FROM util.proveedorusuario pu
-              WHERE pu.codigoproveedor = prov.codigo
-                AND pu.codigousuario = ?
-                AND pu.estado = 1
-          )
-    """);
+        WITH candidatos AS (
+            SELECT art.codigo
+                 , art.descripcion
+                 , art.descripcionpropia
+                 , art.unidadcompra
+                 , art.multiplicadorcompra
+                 , art.costo
+                 , art.margenextra
+                 , art.llevastock
+                 , art.stock
+                 , art.stockminimo
+                 , art.articulopadre
+                 , art.articulopadreproveedor
+                 , art.hijos
+                 , art.observacion
+                 , art.fechaalta
+                 , art.origen
+                 , art.habilitado
+                 , art.estadoproveedor
+
+                 , imp.codigo AS codImp
+                 , imp.nombre AS nomImp
+                 , imp.alicuota AS aliImp
+
+                 , cat.codigo AS codCat
+                 , cat.nombre AS nomCat
+
+                 , uvent.codigo AS codUVent
+                 , uvent.nombre AS nomUVent
+
+                 , prov.codigo AS codProv
+                 , prov.razonsocial AS nomProv
+
+                 , SUM(art.stock) OVER (
+                       PARTITION BY TRIM(art.codigo)
+                   ) AS stock_total
+
+                 , ROW_NUMBER() OVER (
+                       PARTITION BY TRIM(art.codigo)
+                       ORDER BY
+                           CASE WHEN art.stock > 0 THEN 0 ELSE 1 END,
+                           art.stock DESC,
+                           art.fechaactualizacion DESC,
+                           art.proveedor
+                   ) AS rn
+
+            FROM util.articulo art
+
+            INNER JOIN util.proveedor prov
+                    ON art.proveedor = prov.codigo
+
+            LEFT JOIN util.impuesto imp
+                   ON art.impuesto = imp.codigo
+
+            LEFT JOIN util.categoriaarticulo cat
+                   ON art.categoria = cat.codigo
+
+            LEFT JOIN util.unidadventa uvent
+                   ON art.unidadventa = uvent.codigo
+
+            WHERE art.habilitado = TRUE
+              AND prov.habilitado = TRUE
+              AND art.codigo <> '0'
+              AND art.costo > 0
+
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM util.proveedorusuario pu
+                  WHERE pu.codigoproveedor = prov.codigo
+                    AND pu.codigousuario = ?
+                    AND pu.estado = 1
+              )
+        """);
 
         params.add(codigoUsuario);
 
         if (filtro != null && !filtro.trim().isEmpty()) {
             sql.append("""
-            AND (
-                art.codigo ILIKE ?
-                OR art.descripcionpropia ILIKE ?
-                OR art.descripcion ILIKE ?
-            )
+              AND (
+                     art.codigo ILIKE ?
+                  OR art.descripcionpropia ILIKE ?
+                  OR art.descripcion ILIKE ?
+              )
         """);
 
             String like = "%" + filtro.trim() + "%";
+
             params.add(like);
             params.add(like);
             params.add(like);
         }
 
-        sql.append(" ORDER BY art.descripcion ASC ");
+        sql.append("""
+        )
+        SELECT codigo
+             , descripcion
+             , descripcionpropia
+             , unidadcompra
+             , multiplicadorcompra
+             , costo
+             , margenextra
+             , llevastock
+             , stock_total AS stock
+             , stockminimo
+             , articulopadre
+             , articulopadreproveedor
+             , hijos
+             , observacion
+             , fechaalta
+             , origen
+             , habilitado
+             , estadoproveedor
+             , codImp
+             , nomImp
+             , aliImp
+             , codCat
+             , nomCat
+             , codUVent
+             , nomUVent
+             , codProv
+             , nomProv
+
+        FROM candidatos
+        WHERE rn = 1
+        ORDER BY descripcion ASC
+    """);
 
         if (limite > 0) {
             sql.append(" LIMIT ? ");
@@ -260,6 +323,7 @@ public class ArticuloRepository {
                 Connection cn = dataSource.getConnection();
                 PreparedStatement ps = cn.prepareStatement(sql.toString())
         ) {
+
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }

@@ -494,6 +494,84 @@ public class ActualizacionRepository {
                     versionFinal = 44;
                 }
 
+                if (ver < 45) {
+
+                    ejecutar(
+                            conn,
+                            """
+                                CREATE TABLE util.acopio (
+                                            id serial PRIMARY KEY,
+                                            cliente integer NOT NULL,
+                                            fecha timestamp NOT NULL DEFAULT now(),
+                                            usuario integer NOT NULL,
+                                            observaciones varchar(500),
+                                            estado varchar(20) NOT NULL DEFAULT 'ACTIVO',
+                                            ticket integer NOT NULL,
+                                            CONSTRAINT fk_acopio_cliente
+                                                FOREIGN KEY (cliente)
+                                                REFERENCES util.cliente(codigo)
+                                        );
+                            """
+                    );
+                    ejecutar(
+                            conn,
+                            """
+                                CREATE TABLE util.acopiodetalle (
+                                    id serial PRIMARY KEY,
+                                    acopio integer NOT NULL,
+                                    articulo varchar NOT NULL,
+                                    descripcion varchar NOT NULL,
+                                    cantidad numeric NOT NULL CHECK (cantidad > 0),
+                                    precio numeric NOT NULL DEFAULT 0 CHECK (precio >= 0),
+                                    CONSTRAINT fk_acopiodetalle_acopio
+                                        FOREIGN KEY (acopio)
+                                        REFERENCES util.acopio(id)
+                                );
+                            """
+                    );
+                    ejecutar(
+                            conn,
+                            """
+                                CREATE TABLE util.acopioretiro (
+                                    id serial PRIMARY KEY,
+                                    acopio integer NOT NULL,
+                                    fecha timestamp NOT NULL DEFAULT now(),
+                                    usuario integer NOT NULL,
+                                    observaciones varchar(500),
+                                    CONSTRAINT fk_acopioretiro_acopio
+                                        FOREIGN KEY (acopio)
+                                        REFERENCES util.acopio(id)
+                                );
+                            """
+                    );
+                    ejecutar(
+                            conn,
+                            """
+                                CREATE TABLE util.acopioretirodetalle (
+                                  id serial PRIMARY KEY,
+                                  retiro integer NOT NULL,
+                                  acopiodetalle integer NOT NULL,
+                                  cantidad numeric NOT NULL CHECK (cantidad > 0),
+                                  CONSTRAINT fk_acopioretirodetalle_retiro
+                                      FOREIGN KEY (retiro)
+                                      REFERENCES util.acopioretiro(id),
+                                  CONSTRAINT fk_acopioretirodetalle_acopio
+                                      FOREIGN KEY (acopiodetalle)
+                                      REFERENCES util.acopiodetalle(id)
+                              );
+                            """
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            45,
+                            "V45"
+                    );
+
+                    versionFinal = 45;
+                }
+
                 conn.commit();
 
                 return versionFinal;
