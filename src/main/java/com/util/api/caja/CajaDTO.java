@@ -198,6 +198,8 @@ public class CajaDTO {
         public int tipoMovimiento;
         public double total;
 
+        public boolean mayorista;
+
         public ResumenMedioPagoDTO() {
         }
     }

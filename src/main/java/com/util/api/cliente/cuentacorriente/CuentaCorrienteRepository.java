@@ -48,6 +48,7 @@ public class CuentaCorrienteRepository {
                     comps.total,
                     comps.idcliente,
                     comps.estado,
+                    comps.acopio,
                     comps.observacion
                 FROM (
                     SELECT
@@ -61,6 +62,7 @@ public class CuentaCorrienteRepository {
                         ) AS total,
                         ? AS idcliente,
                         0 AS estado,
+                        false AS acopio,
                         '' AS observacion
 
                     UNION
@@ -73,6 +75,7 @@ public class CuentaCorrienteRepository {
                         total,
                         idcliente,
                         estado,
+                        acopio,
                         observacion
                     FROM util.ticket
                     WHERE idcliente = ?
@@ -88,6 +91,7 @@ public class CuentaCorrienteRepository {
                         total,
                         idcliente,
                         estado,
+                        false AS acopio,
                         observacion
                     FROM util.recibo
                     WHERE idcliente = ?
@@ -171,7 +175,8 @@ public class CuentaCorrienteRepository {
             movimiento.codigo = codigo;
             movimiento.fecha =
                     rs.getTimestamp("fecha");
-
+            movimiento.acopio =
+                    rs.getBoolean("acopio");
             movimiento.observacion =
                     rs.getString("observacion");
 
@@ -185,6 +190,11 @@ public class CuentaCorrienteRepository {
                                     codigo,
                                     6
                             );
+
+                    if (movimiento.acopio) {
+                        movimiento.descripcion +=
+                                " - ACOPIO";
+                    }
 
                     movimiento.debe = total;
                     movimiento.haber = 0;

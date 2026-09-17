@@ -32,6 +32,8 @@ public final class CuentaCorrienteDTO {
         public String descripcion;
         public String observacion;
 
+        public boolean acopio;
+
         public double debe;
         public double haber;
         public double saldo;

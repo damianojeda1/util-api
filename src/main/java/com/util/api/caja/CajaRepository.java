@@ -910,55 +910,85 @@ public class CajaRepository {
                 new ArrayList<>();
 
         String sql = """
-            SELECT COALESCE(
-                       mp.descripcion,
-                       CASE pago.tipo
-                           WHEN 1 THEN 'Efectivo'
-                           WHEN 2 THEN 'Débito'
-                           WHEN 3 THEN 'Crédito'
-                           WHEN 4 THEN 'Transferencia'
-                           WHEN 5 THEN 'Otros'
-                           ELSE 'Tipo ' || pago.tipo
-                       END
-                   ) AS medio_pago,
-                   COALESCE(
-                       mp.es_fisico,
-                       pago.tipo = 1
-                   ) AS es_fisico,
-                   movcaja.tipomovcaja,
-                   SUM(
-                       CASE
-                           WHEN movcaja.importe < 0
-                               THEN pago.importe * -1
-                           ELSE pago.importe
-                       END
-                   ) AS total
-            FROM util.movimientocaja movcaja
-            INNER JOIN util.pago pago
-                    ON pago.idmovcaja = movcaja.codigo
-            LEFT JOIN util.medio_pago mp
-                   ON mp.id = pago.id_medio_pago
-            WHERE movcaja.idcaja = ?
-              AND movcaja.estado = 10
-            GROUP BY pago.tipo,
-                     mp.descripcion,
-                     mp.es_fisico,
-                     movcaja.tipomovcaja
-            ORDER BY COALESCE(
-                         mp.es_fisico,
-                         pago.tipo = 1
-                     ) DESC,
-                     mp.descripcion,
-                     pago.tipo
+        SELECT
+            COALESCE(
+                mp.descripcion,
+                CASE pago.tipo
+                    WHEN 1 THEN 'Efectivo'
+                    WHEN 2 THEN 'Débito'
+                    WHEN 3 THEN 'Crédito'
+                    WHEN 4 THEN 'Transferencia'
+                    WHEN 5 THEN 'Otros'
+                    ELSE 'Tipo ' || pago.tipo
+                END
+            ) AS medio_pago,
+
+            COALESCE(
+                mp.es_fisico,
+                pago.tipo = 1
+            ) AS es_fisico,
+
+            movcaja.tipomovcaja,
+
+            COALESCE(
+                recibo.mayorista,
+                FALSE
+            ) AS mayorista,
+
+            SUM(
+                CASE
+                    WHEN movcaja.importe < 0
+                        THEN pago.importe * -1
+                    ELSE pago.importe
+                END
+            ) AS total
+
+        FROM util.movimientocaja movcaja
+
+        INNER JOIN util.pago pago
+                ON pago.idmovcaja = movcaja.codigo
+
+        LEFT JOIN util.medio_pago mp
+               ON mp.id = pago.id_medio_pago
+
+        LEFT JOIN util.recibo recibo
+               ON recibo.idmovcaja = movcaja.codigo
+              AND recibo.estado = ?
+
+        WHERE movcaja.idcaja = ?
+          AND movcaja.estado = ?
+
+        GROUP BY
+            pago.tipo,
+            mp.descripcion,
+            mp.es_fisico,
+            movcaja.tipomovcaja,
+            recibo.mayorista
+
+        ORDER BY
+            COALESCE(
+                recibo.mayorista,
+                FALSE
+            ),
+            COALESCE(
+                mp.es_fisico,
+                pago.tipo = 1
+            ) DESC,
+            mp.descripcion,
+            pago.tipo
         """;
 
         try (PreparedStatement ps =
                      cn.prepareStatement(sql)) {
 
-            ps.setInt(1, codigoCaja);
+            ps.setInt(1, ESTADO_ACTIVO);
+            ps.setInt(2, codigoCaja);
+            ps.setInt(3, ESTADO_ACTIVO);
 
             try (ResultSet rs = ps.executeQuery()) {
+
                 while (rs.next()) {
+
                     CajaDTO.ResumenMedioPagoDTO dto =
                             new CajaDTO.ResumenMedioPagoDTO();
 
@@ -970,6 +1000,9 @@ public class CajaRepository {
 
                     dto.tipoMovimiento =
                             rs.getInt("tipomovcaja");
+
+                    dto.mayorista =
+                            rs.getBoolean("mayorista");
 
                     dto.total =
                             rs.getDouble("total");
