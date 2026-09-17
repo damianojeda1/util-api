@@ -250,6 +250,8 @@ public final class CompCompraDTO {
         public Date fechaRegistracion;
         public int codigoUsuario;
 
+        public String observacion;
+
         public List<RenglonDTO> renglones =
                 new ArrayList<>();
 

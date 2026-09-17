@@ -32,7 +32,7 @@ public class ProveedorExternoController {
             @PathParam("codigoProveedor") int codigoProveedor,
             ProveedorExternoDTO.SincronizarRequest request
     ) {
-        if (codigoProveedor <= 0) {
+        if (codigoProveedor < 0) {
             throw new BadRequestException(
                     "El código del proveedor es inválido"
             );

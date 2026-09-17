@@ -48,7 +48,7 @@ public class ProveedorService {
             int codigoUsuario
     ) throws SQLException {
 
-        if (codigo <= 0) {
+        if (codigo < 0) {
             return null;
         }
 
@@ -92,7 +92,7 @@ public class ProveedorService {
             int codigoProveedor
     ) throws SQLException {
 
-        if (codigoProveedor <= 0) {
+        if (codigoProveedor < 0) {
             return 0;
         }
 
@@ -117,7 +117,7 @@ public class ProveedorService {
             ProveedorDTO.GuardarRequest request
     ) throws SQLException {
 
-        if (codigoProveedor <= 0
+        if (codigoProveedor < 0
                 || !esValidoGuardar(request, true)) {
 
             return false;
@@ -146,7 +146,7 @@ public class ProveedorService {
                 request.proveedor;
 
         if (requiereCodigo
-                && proveedor.codigo <= 0) {
+                && proveedor.codigo < 0) {
 
             return false;
         }

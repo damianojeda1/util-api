@@ -119,7 +119,7 @@ public class ArticuloService {
             int codigoProveedor,
             double porcentaje
     ) {
-        if (codigoProveedor <= 0) {
+        if (codigoProveedor < 0) {
             throw new IllegalArgumentException(
                     "El proveedor no es válido"
             );

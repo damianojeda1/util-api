@@ -17,6 +17,7 @@ public final class TicketDTO {
 
         public GuardarTicketRequest ticket;
         public GuardarReciboRequest recibo;
+        public boolean acopio;
     }
 
     public static class GuardarVentaResponse {
@@ -78,6 +79,8 @@ public final class TicketDTO {
 
         public double total;
         public String observacion;
+
+        public boolean acopio;
 
         public List<ItemRequest> items = new ArrayList<>();
     }

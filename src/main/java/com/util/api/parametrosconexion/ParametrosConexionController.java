@@ -40,7 +40,7 @@ public class ParametrosConexionController {
             @PathParam("codigoProveedor")
             int codigoProveedor
     ) {
-        if (codigoProveedor <= 0) {
+        if (codigoProveedor < 0) {
             return Response.status(
                             Response.Status.BAD_REQUEST
                     )

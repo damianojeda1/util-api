@@ -444,6 +444,14 @@ public class ReporteRepository {
                 )
         );
 
+
+        empresa.setCategoriaIVA(
+                config.getOrDefault(
+                        "generales_iva_desc",
+                        ""
+                )
+        );
+
         empresa.setEmail(
                 config.getOrDefault(
                         "generales_email",

@@ -21,7 +21,7 @@ public class CompCompraService {
             String numero
     ) throws SQLException {
 
-        if (codigoProveedor <= 0
+        if (codigoProveedor < 0
                 || esVacio(letra)
                 || esVacio(centro)
                 || esVacio(numero)) {
@@ -119,7 +119,7 @@ public class CompCompraService {
             Date hasta
     ) throws SQLException {
 
-        if (codigoProveedor <= 0
+        if (codigoProveedor < 0
                 || desde == null
                 || hasta == null) {
 
@@ -251,7 +251,7 @@ public class CompCompraService {
             return false;
         }
 
-        if (request.codigoProveedor <= 0) {
+        if (request.codigoProveedor < 0) {
             return false;
         }
 
@@ -290,7 +290,7 @@ public class CompCompraService {
             return false;
         }
 
-        if (request.codigoProveedor <= 0) {
+        if (request.codigoProveedor < 0) {
             return false;
         }
 

@@ -576,7 +576,7 @@ public class ArticuloRepository {
         if (articulo == null
                 || codigo == null
                 || codigo.isBlank()
-                || proveedor <= 0) {
+                || proveedor < 0) {
 
             return new ResInsertUpdate("-1", false);
         }
@@ -744,7 +744,7 @@ public class ArticuloRepository {
 
         if (codigo == null
                 || codigo.isBlank()
-                || proveedor <= 0) {
+                || proveedor < 0) {
             return false;
         }
 
@@ -783,8 +783,8 @@ public class ArticuloRepository {
         if (request == null
                 || request.codigoArticulo == null
                 || request.codigoArticulo.isBlank()
-                || request.proveedorActual <= 0
-                || request.proveedorNuevo <= 0
+                || request.proveedorActual < 0
+                || request.proveedorNuevo < 0
                 || request.proveedorActual == request.proveedorNuevo) {
 
             return new ResInsertUpdate("-1", false);
@@ -828,7 +828,7 @@ public class ArticuloRepository {
             ArticuloDTO.EstablecerMargenRequest request
     ) throws SQLException {
 
-        if (request == null || request.codigoProveedor <= 0) {
+        if (request == null || request.codigoProveedor < 0) {
             return 0;
         }
 
@@ -930,7 +930,7 @@ public class ArticuloRepository {
                 || request.codigoActual.isBlank()
                 || request.codigoNuevo == null
                 || request.codigoNuevo.isBlank()
-                || request.proveedor <= 0) {
+                || request.proveedor < 0) {
 
             return false;
         }
@@ -959,7 +959,7 @@ public class ArticuloRepository {
             int codigoProveedor,
             double porcentaje
     ) {
-        if (codigoProveedor <= 0 || !Double.isFinite(porcentaje)) {
+        if (codigoProveedor < 0 || !Double.isFinite(porcentaje)) {
             return 0;
         }
 

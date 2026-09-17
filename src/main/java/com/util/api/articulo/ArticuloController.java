@@ -312,7 +312,7 @@ public class ArticuloController {
                     .build();
         }
 
-        if (request.codigoProveedor <= 0) {
+        if (request.codigoProveedor < 0) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("El proveedor no es válido")
                     .build();

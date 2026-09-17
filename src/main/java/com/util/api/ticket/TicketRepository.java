@@ -151,38 +151,40 @@ public class TicketRepository {
     ) throws SQLException {
 
         String sql = """
-                INSERT INTO util.ticket (
-                    tipo,
-                    fecha,
-                    subtotal,
-                    bonificacion,
-                    porcentajebonificacion,
-                    total,
-                    idvendedor,
-                    nombrevendedor,
-                    idcliente,
-                    nombrecliente,
-                    estado,
-                    observacion,
-                    mayorista
-                )
-                VALUES (
-                    ?,
-                    NOW(),
-                    ?,
-                    0,
-                    0,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    0,
-                    ?,
-                    ?
-                )
-                RETURNING codigo
-                """;
+            INSERT INTO util.ticket (
+                tipo,
+                fecha,
+                subtotal,
+                bonificacion,
+                porcentajebonificacion,
+                total,
+                idvendedor,
+                nombrevendedor,
+                idcliente,
+                nombrecliente,
+                estado,
+                observacion,
+                mayorista,
+                acopio
+            )
+            VALUES (
+                ?,
+                NOW(),
+                ?,
+                0,
+                0,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                0,
+                ?,
+                ?,
+                ?
+            )
+            RETURNING codigo
+            """;
 
         double total = request.tipo == 1
                 ? request.total
@@ -233,6 +235,11 @@ public class TicketRepository {
             ps.setBoolean(
                     9,
                     mayorista
+            );
+
+            ps.setBoolean(
+                    10,
+                    request.acopio
             );
 
             try (ResultSet rs = ps.executeQuery()) {

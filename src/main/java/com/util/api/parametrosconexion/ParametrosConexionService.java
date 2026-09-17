@@ -16,7 +16,7 @@ public class ParametrosConexionService {
     public ParametrosConexionDTO obtenerConexionProveedor(
             int codigoProveedor
     ) {
-        if (codigoProveedor <= 0) {
+        if (codigoProveedor < 0) {
             return null;
         }
 

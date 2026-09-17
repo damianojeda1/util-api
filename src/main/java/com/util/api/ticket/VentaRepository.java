@@ -1,5 +1,6 @@
 package com.util.api.ticket;
 
+import com.util.api.acopio.AcopioRepository;
 import com.util.api.recibo.ReciboRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -20,6 +21,9 @@ public class VentaRepository {
 
     @Inject
     ReciboRepository reciboRepository;
+
+    @Inject
+    AcopioRepository acopioRepository;
 
     // -------------------------------------------------------------------------
     // GUARDAR VENTA COMPLETA
@@ -95,6 +99,14 @@ public class VentaRepository {
                     );
                 }
 
+                if (request.acopio) {
+
+                    acopioRepository.guardarAcopio(
+                            cn,
+                            ticketResponse.codigo,
+                            request.ticket
+                    );
+                }
                 // -------------------------------------------------------------
                 // TODO OK
                 // -------------------------------------------------------------

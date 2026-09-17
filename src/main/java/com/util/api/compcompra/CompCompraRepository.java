@@ -1063,7 +1063,8 @@ public class CompCompraRepository {
                        ccc.retganancias,
                        ccc.total,
                        ccc.fecharegistracioncomprobante,
-                       ccc.usuarioregistracion
+                       ccc.usuarioregistracion,
+                       ccc.observacion
                 FROM util.comprobantecompracab ccc
                 INNER JOIN util.proveedor prov
                         ON prov.codigo = ccc.nroproveedor
@@ -1205,6 +1206,8 @@ public class CompCompraRepository {
 
                 dto.codigoUsuario =
                         rs.getInt("usuarioregistracion");
+
+                dto.observacion = rs.getString("observacion");
 
                 return dto;
             }
