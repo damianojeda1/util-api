@@ -32,6 +32,8 @@ public class ReporteCabeceraDTO {
     private String cae;
     private Date vencimientoCAE;
 
+    private boolean acopio;
+
     public ReporteCabeceraDTO() {
     }
 
@@ -177,5 +179,13 @@ public class ReporteCabeceraDTO {
 
     public void setVencimientoCAE(Date vencimientoCAE) {
         this.vencimientoCAE = vencimientoCAE;
+    }
+
+    public boolean isAcopio() {
+        return acopio;
+    }
+
+    public void setAcopio(boolean acopio) {
+        this.acopio = acopio;
     }
 }

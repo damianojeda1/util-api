@@ -67,7 +67,8 @@ public class ReporteRepository {
                 idcliente,
                 estado,
                 observacion,
-                tipo
+                tipo,
+                acopio
             FROM util.ticket
             WHERE codigo = ?
             """;
@@ -115,6 +116,8 @@ public class ReporteRepository {
                 cab.setNombreVendedor(
                         rs.getString("nombrevendedor")
                 );
+
+                cab.setAcopio(rs.getBoolean("acopio"));
 
                 dto.setComprobante(cab);
 

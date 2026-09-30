@@ -832,6 +832,146 @@ public class AcopioRepository {
         }
     }
 
+    public List<AcopioDTO.RetiroDTO> listarRetiros(
+            int idAcopio
+    ) throws SQLException {
+
+        List<AcopioDTO.RetiroDTO> resultado =
+                new ArrayList<>();
+
+        if (idAcopio <= 0) {
+            return resultado;
+        }
+
+        String sql = """
+        SELECT
+            ar.id,
+            ar.acopio,
+            ar.fecha,
+            ar.usuario,
+            ar.observaciones
+        FROM util.acopioretiro ar
+        WHERE ar.acopio = ?
+        ORDER BY ar.fecha DESC, ar.id DESC
+        """;
+
+        try (
+                Connection cn =
+                        dataSource.getConnection();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setInt(
+                    1,
+                    idAcopio
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                while (rs.next()) {
+
+                    AcopioDTO.RetiroDTO dto =
+                            new AcopioDTO.RetiroDTO();
+
+                    dto.id =
+                            rs.getInt("id");
+
+                    dto.acopio =
+                            rs.getInt("acopio");
+
+                    dto.fecha =
+                            rs.getTimestamp("fecha");
+
+                    dto.usuario =
+                            rs.getInt("usuario");
+
+                    dto.observaciones =
+                            rs.getString("observaciones");
+
+                    resultado.add(dto);
+                }
+            }
+        }
+
+        return resultado;
+    }
+
+    public List<AcopioDTO.RetiroDetalleDTO> obtenerDetalleRetiro(
+            int idRetiro
+    ) throws SQLException {
+
+        List<AcopioDTO.RetiroDetalleDTO> resultado =
+                new ArrayList<>();
+
+        if (idRetiro <= 0) {
+            return resultado;
+        }
+
+        String sql = """
+        SELECT
+            ard.id,
+            ard.retiro,
+            ard.acopiodetalle,
+            ad.articulo,
+            ad.descripcion,
+            ard.cantidad
+        FROM util.acopioretirodetalle ard
+        INNER JOIN util.acopiodetalle ad
+                ON ad.id = ard.acopiodetalle
+        WHERE ard.retiro = ?
+        ORDER BY ard.id
+        """;
+
+        try (
+                Connection cn =
+                        dataSource.getConnection();
+
+                PreparedStatement ps =
+                        cn.prepareStatement(sql)
+        ) {
+
+            ps.setInt(
+                    1,
+                    idRetiro
+            );
+
+            try (ResultSet rs =
+                         ps.executeQuery()) {
+
+                while (rs.next()) {
+
+                    AcopioDTO.RetiroDetalleDTO dto =
+                            new AcopioDTO.RetiroDetalleDTO();
+
+                    dto.id =
+                            rs.getInt("id");
+
+                    dto.retiro =
+                            rs.getInt("retiro");
+
+                    dto.acopioDetalle =
+                            rs.getInt("acopiodetalle");
+
+                    dto.articulo =
+                            rs.getString("articulo");
+
+                    dto.descripcion =
+                            rs.getString("descripcion");
+
+                    dto.cantidad =
+                            rs.getDouble("cantidad");
+
+                    resultado.add(dto);
+                }
+            }
+        }
+
+        return resultado;
+    }
+
     private static class DetalleRetiroDB {
 
         String articulo;

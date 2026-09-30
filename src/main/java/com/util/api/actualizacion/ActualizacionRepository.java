@@ -572,6 +572,104 @@ public class ActualizacionRepository {
                     versionFinal = 45;
                 }
 
+                if (ver<46){
+                    ejecutar(
+                            conn,
+                            """
+                            ALTER TABLE util.ticket
+                            ADD COLUMN IF NOT EXISTS acopio boolean
+                            NOT NULL DEFAULT false;
+                        
+                            ALTER TABLE util.acopio
+                            ADD CONSTRAINT fk_acopio_ticket
+                            FOREIGN KEY (ticket)
+                            REFERENCES util.ticket(codigo);
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            "CREATE OR REPLACE FUNCTION util.actualizar_stock_venta()\n" +
+                                    "RETURNS trigger\n" +
+                                    "LANGUAGE plpgsql\n" +
+                                    "AS $$\n" +
+                                    "DECLARE\n" +
+                                    "    restante numeric;\n" +
+                                    "    r record;\n" +
+                                    "    descontar numeric;\n" +
+                                    "    tipo_ticket integer;\n" +
+                                    "    es_acopio boolean;\n" +
+                                    "BEGIN\n" +
+                                    "    SELECT\n" +
+                                    "        tipo,\n" +
+                                    "        COALESCE(acopio, false)\n" +
+                                    "    INTO\n" +
+                                    "        tipo_ticket,\n" +
+                                    "        es_acopio\n" +
+                                    "    FROM util.ticket\n" +
+                                    "    WHERE codigo = NEW.idticket;\n" +
+                                    "    -- ---------------------------------------------------------\n" +
+                                    "    -- VENTA NORMAL\n" +
+                                    "    -- ---------------------------------------------------------\n" +
+                                    "    IF tipo_ticket = 1\n" +
+                                    "       AND NOT es_acopio THEN\n" +
+                                    "        restante := NEW.cantidad;\n" +
+                                    "        FOR r IN\n" +
+                                    "            SELECT\n" +
+                                    "                codigo,\n" +
+                                    "                proveedor,\n" +
+                                    "                stock\n" +
+                                    "            FROM util.articulo\n" +
+                                    "            WHERE codigo = NEW.codigoarticulo\n" +
+                                    "              AND llevaStock = true\n" +
+                                    "              AND habilitado = true\n" +
+                                    "              AND stock > 0\n" +
+                                    "            ORDER BY\n" +
+                                    "                stock DESC,\n" +
+                                    "                fechaactualizacion DESC,\n" +
+                                    "                proveedor\n" +
+                                    "            FOR UPDATE\n" +
+                                    "        LOOP\n" +
+                                    "            EXIT WHEN restante <= 0;\n" +
+                                    "            descontar := LEAST(\n" +
+                                    "                r.stock,\n" +
+                                    "                restante\n" +
+                                    "            );\n" +
+                                    "            UPDATE util.articulo\n" +
+                                    "            SET stock = stock - descontar,\n" +
+                                    "                fechaactualizacion = now()\n" +
+                                    "            WHERE codigo = r.codigo\n" +
+                                    "              AND proveedor = r.proveedor;\n" +
+                                    "            restante :=\n" +
+                                    "                    restante - descontar;\n" +
+                                    "        END LOOP;\n" +
+                                    "    END IF;\n" +
+                                    "    -- ---------------------------------------------------------\n" +
+                                    "    -- DEVOLUCIÓN\n" +
+                                    "    -- ---------------------------------------------------------\n" +
+                                    "    IF tipo_ticket = 2 THEN\n" +
+                                    "        UPDATE util.articulo\n" +
+                                    "        SET stock = stock + NEW.cantidad,\n" +
+                                    "            fechaactualizacion = now()\n" +
+                                    "        WHERE codigo = NEW.codigoarticulo\n" +
+                                    "          AND proveedor = NEW.proveedor\n" +
+                                    "          AND llevaStock = true;\n" +
+                                    "    END IF;\n" +
+                                    "    RETURN NULL;\n" +
+                                    "END;\n" +
+                                    "$$;"
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            46,
+                            "V46"
+                    );
+
+                    versionFinal = 46;
+                }
+
                 conn.commit();
 
                 return versionFinal;

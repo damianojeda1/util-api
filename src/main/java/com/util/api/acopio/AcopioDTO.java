@@ -106,4 +106,29 @@ public final class AcopioDTO {
         }
     }
 
+    public static class RetiroDTO {
+
+        public int id;
+        public int acopio;
+        public Date fecha;
+        public int usuario;
+        public String observaciones;
+
+        public RetiroDTO() {
+        }
+    }
+
+    public static class RetiroDetalleDTO {
+
+        public int id;
+        public int retiro;
+        public int acopioDetalle;
+        public String articulo;
+        public String descripcion;
+        public double cantidad;
+
+        public RetiroDetalleDTO() {
+        }
+    }
+
 }

@@ -128,4 +128,76 @@ public class AcopioResource {
                     .build();
         }
     }
+
+    @GET
+    @Path("/{id}/retiros")
+    public Response listarRetiros(
+            @PathParam("id") int idAcopio
+    ) {
+
+        if (idAcopio <= 0) {
+            return Response
+                    .ok(List.of())
+                    .build();
+        }
+
+        try {
+
+            return Response
+                    .ok(
+                            acopioRepository.listarRetiros(
+                                    idAcopio
+                            )
+                    )
+                    .build();
+
+        } catch (Exception ex) {
+
+            ex.printStackTrace();
+
+            return Response
+                    .serverError()
+                    .entity(
+                            "No se pudo obtener "
+                                    + "el historial de retiros"
+                    )
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/retiros/{id}/detalle")
+    public Response obtenerDetalleRetiro(
+            @PathParam("id") int idRetiro
+    ) {
+
+        if (idRetiro <= 0) {
+            return Response
+                    .ok(List.of())
+                    .build();
+        }
+
+        try {
+
+            return Response
+                    .ok(
+                            acopioRepository.obtenerDetalleRetiro(
+                                    idRetiro
+                            )
+                    )
+                    .build();
+
+        } catch (Exception ex) {
+
+            ex.printStackTrace();
+
+            return Response
+                    .serverError()
+                    .entity(
+                            "No se pudo obtener "
+                                    + "el detalle del retiro"
+                    )
+                    .build();
+        }
+    } 
 }
