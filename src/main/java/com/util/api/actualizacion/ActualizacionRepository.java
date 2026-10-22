@@ -670,6 +670,57 @@ public class ActualizacionRepository {
                     versionFinal = 46;
                 }
 
+                if (ver < 47) {
+
+                    ejecutar(
+                            conn,
+                            """
+                            ALTER TABLE util.ticket
+                            ADD COLUMN IF NOT EXISTS ticketreferencia integer
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            DO $$
+                            BEGIN
+                                IF NOT EXISTS (
+                                    SELECT 1
+                                    FROM pg_constraint
+                                    WHERE conname = 'fk_ticket_referencia'
+                                      AND conrelid = 'util.ticket'::regclass
+                                ) THEN
+                
+                                    ALTER TABLE util.ticket
+                                    ADD CONSTRAINT fk_ticket_referencia
+                                    FOREIGN KEY (ticketreferencia)
+                                    REFERENCES util.ticket(codigo);
+                
+                                END IF;
+                            END
+                            $$
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            CREATE INDEX IF NOT EXISTS idx_ticket_referencia
+                            ON util.ticket(ticketreferencia)
+                            """
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            47,
+                            "V47"
+                    );
+
+                    versionFinal = 47;
+                }
+
                 conn.commit();
 
                 return versionFinal;
@@ -693,39 +744,21 @@ public class ActualizacionRepository {
     private void ejecutar(
             Connection conn,
             String sql
-    ) {
+    ) throws SQLException {
 
-        Savepoint savepoint = null;
+        Savepoint savepoint = conn.setSavepoint();
 
-        try {
+        try (PreparedStatement ps =
+                     conn.prepareStatement(sql)) {
 
-            savepoint = conn.setSavepoint();
-
-            try (PreparedStatement ps =
-                         conn.prepareStatement(sql)) {
-
-                ps.executeUpdate();
-            }
-
+            ps.executeUpdate();
             conn.releaseSavepoint(savepoint);
 
         } catch (SQLException ex) {
 
-            try {
+            conn.rollback(savepoint);
 
-                if (savepoint != null) {
-                    conn.rollback(savepoint);
-                    conn.releaseSavepoint(savepoint);
-                }
-
-            } catch (SQLException rollbackEx) {
-                rollbackEx.printStackTrace();
-            }
-
-            System.out.println(
-                    "Error ejecutando actualización: "
-                            + ex.getMessage()
-            );
+            throw ex;
         }
     }
 
@@ -743,7 +776,6 @@ public class ActualizacionRepository {
                        observacion = ?,
                        fechaact = CURRENT_DATE
                  WHERE idapp = 1
-                   AND terminal = ?
                 """;
 
         try (PreparedStatement ps =
@@ -751,14 +783,13 @@ public class ActualizacionRepository {
 
             ps.setInt(1, version);
             ps.setString(2, observacion);
-            ps.setString(3, terminal.trim());
 
             int actualizados = ps.executeUpdate();
 
-            if (actualizados != 1) {
+            if (actualizados == 0) {
                 throw new SQLException(
-                        "No se pudo actualizar util.version " +
-                                "para terminal " + terminal
+                        "No se pudo actualizar util.version. "
+                                + "No existe ningún registro para idapp = 1"
                 );
             }
         }

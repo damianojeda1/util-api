@@ -1199,66 +1199,63 @@ public class ReporteRepository {
     // VENTAS POR PRODUCTO
     // -------------------------------------------------------------------------
 
-    public List<ReporteDTO.VentaProductoDTO>
-    listarVentasPorProducto(
+
+    public List<ReporteDTO.VentaProductoDTO> listarVentasPorProducto(
             LocalDate desde,
             LocalDate hasta
     ) throws SQLException {
 
-        List<ReporteDTO.VentaProductoDTO> result =
-                new ArrayList<>();
+        List<ReporteDTO.VentaProductoDTO> result = new ArrayList<>();
 
         if (!rangoValido(desde, hasta)) {
             return result;
         }
 
         String sql = """
-                SELECT
-                    it.codigoarticulo AS codigo,
-                    it.descripcion,
-                    COALESCE(SUM(it.cantidad), 0) AS cantidad,
-                    COALESCE(
-                        SUM(it.neto + it.importeiva),
-                        0
-                    ) AS total
-                FROM util.item it
-                INNER JOIN util.ticket tic
-                        ON tic.codigo = it.idticket
-                WHERE tic.tipo = 1
-                  AND tic.fecha::date BETWEEN ? AND ?
-                GROUP BY
-                    it.codigoarticulo,
-                    it.descripcion
-                ORDER BY
-                    cantidad DESC,
-                    it.descripcion ASC
-                """;
+            SELECT
+                it.codigoarticulo AS codigo,
+                it.descripcion,
+                COALESCE(SUM(
+                    CASE
+                        WHEN tic.tipo = 2 THEN -it.cantidad
+                        ELSE it.cantidad
+                    END
+                ), 0) AS cantidad,
+                COALESCE(SUM(
+                    CASE
+                        WHEN tic.tipo = 2
+                            THEN -(it.neto + it.importeiva) * it.cantidad
+                        ELSE (it.neto + it.importeiva) * it.cantidad
+                    END
+                ), 0) AS total
+            FROM util.item it
+            INNER JOIN util.ticket tic
+                    ON tic.codigo = it.idticket
+            WHERE tic.tipo IN (1, 2)
+              AND tic.fecha::date BETWEEN ? AND ?
+            GROUP BY
+                it.codigoarticulo,
+                it.descripcion
+            ORDER BY
+                cantidad DESC,
+                it.descripcion ASC
+            """;
 
         try (
                 Connection cn = dataSource.getConnection();
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
-
             setRango(ps, desde, hasta);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 while (rs.next()) {
-
                     ReporteDTO.VentaProductoDTO dto =
                             new ReporteDTO.VentaProductoDTO();
 
-                    dto.codigo =
-                            rs.getString("codigo");
-
-                    dto.descripcion =
-                            texto(rs.getString("descripcion"));
-
-                    dto.cantidad =
-                            decimal(rs, "cantidad");
-
-                    dto.total =
-                            decimal(rs, "total");
+                    dto.codigo = rs.getString("codigo");
+                    dto.descripcion = texto(rs.getString("descripcion"));
+                    dto.cantidad = decimal(rs, "cantidad");
+                    dto.total = decimal(rs, "total");
 
                     result.add(dto);
                 }
@@ -1267,6 +1264,7 @@ public class ReporteRepository {
 
         return result;
     }
+
 
     // -------------------------------------------------------------------------
     // PRODUCTOS RENTABLES

@@ -165,23 +165,11 @@ public class TicketRepository {
                 estado,
                 observacion,
                 mayorista,
-                acopio
+                acopio,
+                ticketreferencia
             )
             VALUES (
-                ?,
-                NOW(),
-                ?,
-                0,
-                0,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                0,
-                ?,
-                ?,
-                ?
+                ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?
             )
             RETURNING codigo
             """;
@@ -241,6 +229,12 @@ public class TicketRepository {
                     10,
                     request.acopio
             );
+
+            if (request.ticketReferencia == null) {
+                ps.setNull(11, Types.INTEGER);
+            } else {
+                ps.setInt(11, request.ticketReferencia);
+            }
 
             try (ResultSet rs = ps.executeQuery()) {
 
@@ -378,6 +372,19 @@ public class TicketRepository {
             return "El ticket no contiene artículos";
         }
 
+        if (request.tipo == 2
+                && (request.ticketReferencia == null
+                || request.ticketReferencia <= 0)) {
+
+            return "La devolución debe indicar el ticket original";
+        }
+
+        if (request.tipo != 2
+                && request.ticketReferencia != null) {
+
+            return "Solo las devoluciones pueden referenciar otro ticket";
+        }
+
         return null;
     }
 
@@ -407,6 +414,8 @@ public class TicketRepository {
                     t.total,
                     t.idcliente,
                     t.nombrecliente,
+                    t.nombrecliente,
+                    t.ticketreferencia,
                     cf.descripcion AS comprobante_fiscal,
                     cf.neto AS neto_comprobante,
                     cf.iva AS iva_comprobante,
@@ -460,6 +469,8 @@ public class TicketRepository {
 
                     dto.nombreCliente =
                             rs.getString("nombrecliente");
+
+                    dto.ticketReferencia = rs.getInt("ticketreferencia");
 
                     dto.total =
                             rs.getDouble("total");
@@ -682,7 +693,8 @@ public class TicketRepository {
                     c.codigoidentificacion,
                     c.condicioniva,
                     c.razonsocial,
-                    c.localidad
+                    c.localidad,
+                    t.ticketreferencia
                 FROM util.ticket t
                 INNER JOIN util.cliente c
                         ON c.codigo = t.idcliente
@@ -783,6 +795,9 @@ public class TicketRepository {
 
         dto.cliente = cliente;
 
+        dto.ticketReferencia =
+                (Integer) rs.getObject("ticketreferencia");
+
         return dto;
     }
 
@@ -806,6 +821,7 @@ public class TicketRepository {
                     item.importeiva,
                     item.precio,
                     item.bonificacion,
+                    item.proveedor,
                     imp.codigo AS codigoiva
                 FROM util.item item
                 INNER JOIN util.impuesto imp
@@ -854,6 +870,9 @@ public class TicketRepository {
 
                     dto.bonificacion =
                             rs.getDouble("bonificacion");
+
+                    dto.proveedor =
+                            rs.getInt("proveedor");
 
                     dto.codigoIVA =
                             rs.getString("codigoiva");

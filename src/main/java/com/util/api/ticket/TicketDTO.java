@@ -82,6 +82,8 @@ public final class TicketDTO {
 
         public boolean acopio;
 
+        public Integer ticketReferencia;
+
         public List<ItemRequest> items = new ArrayList<>();
     }
 
@@ -146,6 +148,7 @@ public final class TicketDTO {
 
         public int idCliente;
         public String nombreCliente;
+        public Integer ticketReferencia;
 
         public double total;
 
@@ -424,6 +427,8 @@ public final class TicketDTO {
 
         public ClienteFiscalDTO cliente;
 
+        public Integer ticketReferencia;
+
         public List<ItemFacturacionDTO> items =
                 new ArrayList<>();
     }
@@ -441,6 +446,7 @@ public final class TicketDTO {
         public double importeIVA;
         public double precio;
         public double bonificacion;
+        public Integer proveedor;
 
         public String codigoIVA;
     }
