@@ -84,6 +84,8 @@ public final class TicketDTO {
 
         public Integer ticketReferencia;
 
+        public Integer departamento = 1;
+
         public List<ItemRequest> items = new ArrayList<>();
     }
 
@@ -156,6 +158,8 @@ public final class TicketDTO {
         public Double netoComprobante;
         public Double ivaComprobante;
         public Double totalComprobante;
+        public int departamento = 1;
+        public String nombreDepartamento;
     }
 
     // -------------------------------------------------------------------------
@@ -428,6 +432,7 @@ public final class TicketDTO {
         public ClienteFiscalDTO cliente;
 
         public Integer ticketReferencia;
+        public int departamento = 1;
 
         public List<ItemFacturacionDTO> items =
                 new ArrayList<>();
@@ -579,6 +584,10 @@ public final class TicketDTO {
         public int estado;
         public String observacion;
         public int tipo;
+
+        public int departamento;
+
+        public String nombreDepartamento;
 
         public List<DetalleItemDTO> items =
                 new ArrayList<>();

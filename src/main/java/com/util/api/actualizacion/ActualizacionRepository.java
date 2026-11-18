@@ -721,6 +721,158 @@ public class ActualizacionRepository {
                     versionFinal = 47;
                 }
 
+
+                if (ver < 48) {
+
+                    ejecutar(
+                            conn,
+                            """
+                            CREATE TABLE IF NOT EXISTS util.departamento (
+                                codigo integer NOT NULL,
+                                nombre varchar(100) NOT NULL,
+                                habilitado boolean NOT NULL DEFAULT true
+                            )
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            CREATE SEQUENCE IF NOT EXISTS util.departamento_codigo_seq
+                                START WITH 1
+                                INCREMENT BY 1
+                                NO MINVALUE
+                                NO MAXVALUE
+                                CACHE 1
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            ALTER SEQUENCE util.departamento_codigo_seq
+                            OWNED BY util.departamento.codigo
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            ALTER TABLE util.departamento
+                            ALTER COLUMN codigo SET DEFAULT
+                            nextval('util.departamento_codigo_seq'::regclass)
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            DO $$
+                            BEGIN
+                                IF NOT EXISTS (
+                                    SELECT 1
+                                    FROM pg_constraint
+                                    WHERE conname = 'departamento_pkey'
+                                      AND conrelid = 'util.departamento'::regclass
+                                ) THEN
+                                    ALTER TABLE util.departamento
+                                    ADD CONSTRAINT departamento_pkey
+                                    PRIMARY KEY (codigo);
+                                END IF;
+                            END
+                            $$
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            INSERT INTO util.departamento (codigo, nombre, habilitado)
+                            SELECT 1, 'General', true
+                            WHERE NOT EXISTS (
+                                SELECT 1
+                                FROM util.departamento
+                                WHERE codigo = 1
+                            )
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            DO $$
+                            BEGIN
+                                PERFORM setval(
+                                    'util.departamento_codigo_seq',
+                                    GREATEST(
+                                        (SELECT COALESCE(MAX(codigo), 1)
+                                         FROM util.departamento),
+                                        1
+                                    ),
+                                    true
+                                );
+                            END $$
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            DO $$
+                            BEGIN
+                                IF NOT EXISTS (
+                                    SELECT 1
+                                    FROM information_schema.columns
+                                    WHERE table_schema = 'util'
+                                      AND table_name = 'ticket'
+                                      AND column_name = 'departamento'
+                                ) THEN
+                                    ALTER TABLE util.ticket
+                                    ADD COLUMN departamento integer NOT NULL DEFAULT 1;
+                                END IF;
+                            END $$
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            DO $$
+                            BEGIN
+                                IF NOT EXISTS (
+                                    SELECT 1
+                                    FROM pg_constraint
+                                    WHERE conname = 'fk_ticket_departamento'
+                                      AND conrelid = 'util.ticket'::regclass
+                                ) THEN
+                                    ALTER TABLE util.ticket
+                                    ADD CONSTRAINT fk_ticket_departamento
+                                    FOREIGN KEY (departamento)
+                                    REFERENCES util.departamento(codigo);
+                                END IF;
+                            END
+                            $$
+                            """
+                    );
+
+                    ejecutar(
+                            conn,
+                            """
+                            CREATE INDEX IF NOT EXISTS idx_ticket_departamento
+                            ON util.ticket(departamento)
+                            """
+                    );
+
+                    actualizarVersion(
+                            conn,
+                            terminal,
+                            48,
+                            "V48"
+                    );
+
+                    versionFinal = 48;
+                }
+
                 conn.commit();
 
                 return versionFinal;

@@ -390,6 +390,40 @@ public class ArticuloController {
         }
     }
 
+    @POST
+    @Path("/excel/lote")
+    public Response importarExcelLote(
+            ImportacionExcelRequest request
+    ) {
+        if (request == null
+                || request.articulos == null
+                || request.articulos.isEmpty()) {
+
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("La lista de artículos está vacía")
+                    .build();
+        }
+
+        if (request.articulos.size() > 200) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Se permiten como máximo 200 artículos por lote")
+                    .build();
+        }
+
+        try {
+            return Response.ok(
+                    service.importarExcelLote(request)
+            ).build();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+
+            return Response.serverError()
+                    .entity("Error importando artículos desde Excel")
+                    .build();
+        }
+    }
+
     @DELETE
     @Path("/{codigo}/proveedor/{proveedor}")
     public Response delete(

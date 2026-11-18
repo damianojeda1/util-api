@@ -91,6 +91,9 @@ public class TicketRepository {
             throw new SQLException(error);
         }
 
+        asignarDepartamentoDevolucion(cn, request);
+        validarDepartamento(cn, request);
+
         boolean mayorista =
                 obtenerClienteMayorista(
                         cn,
@@ -151,28 +154,29 @@ public class TicketRepository {
     ) throws SQLException {
 
         String sql = """
-            INSERT INTO util.ticket (
-                tipo,
-                fecha,
-                subtotal,
-                bonificacion,
-                porcentajebonificacion,
-                total,
-                idvendedor,
-                nombrevendedor,
-                idcliente,
-                nombrecliente,
-                estado,
-                observacion,
-                mayorista,
-                acopio,
-                ticketreferencia
-            )
-            VALUES (
-                ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?
-            )
-            RETURNING codigo
-            """;
+                INSERT INTO util.ticket (
+                    tipo,
+                    fecha,
+                    subtotal,
+                    bonificacion,
+                    porcentajebonificacion,
+                    total,
+                    idvendedor,
+                    nombrevendedor,
+                    idcliente,
+                    nombrecliente,
+                    estado,
+                    observacion,
+                    mayorista,
+                    acopio,
+                    ticketreferencia,
+                    departamento
+                )
+                VALUES (
+                    ?, NOW(), ?, 0, 0, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?
+                )
+                RETURNING codigo
+                """;
 
         double total = request.tipo == 1
                 ? request.total
@@ -235,6 +239,8 @@ public class TicketRepository {
             } else {
                 ps.setInt(11, request.ticketReferencia);
             }
+
+            ps.setInt(12, request.departamento);
 
             try (ResultSet rs = ps.executeQuery()) {
 
@@ -385,7 +391,41 @@ public class TicketRepository {
             return "Solo las devoluciones pueden referenciar otro ticket";
         }
 
+
         return null;
+    }
+
+    private void asignarDepartamentoDevolucion(
+            Connection cn, TicketDTO.GuardarTicketRequest request
+    ) throws SQLException {
+        if (request.tipo != 2) return;
+        String sql = "SELECT departamento FROM util.ticket WHERE codigo = ? AND tipo = 1";
+        try (PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setInt(1, request.ticketReferencia);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("No se encontró el ticket original de la devolución");
+                }
+                request.departamento = rs.getInt("departamento");
+            }
+        }
+    }
+
+    private void validarDepartamento(
+            Connection cn, TicketDTO.GuardarTicketRequest request
+    ) throws SQLException {
+        if (request.departamento == null || request.departamento <= 0) {
+            request.departamento = 1;
+        }
+        String sql = "SELECT 1 FROM util.departamento WHERE codigo = ?";
+        try (PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setInt(1, request.departamento);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("El departamento seleccionado no existe: " + request.departamento);
+                }
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -414,15 +454,18 @@ public class TicketRepository {
                     t.total,
                     t.idcliente,
                     t.nombrecliente,
-                    t.nombrecliente,
                     t.ticketreferencia,
                     cf.descripcion AS comprobante_fiscal,
                     cf.neto AS neto_comprobante,
                     cf.iva AS iva_comprobante,
-                    cf.total AS total_comprobante
+                    cf.total AS total_comprobante,
+                    t.departamento,
+                    d.nombre AS nombre_departamento
                 FROM util.ticket t
                 LEFT JOIN util.comprobantefiscal cf
                        ON cf.ticket = t.codigo
+                LEFT JOIN util.departamento d
+                       ON d.codigo = t.departamento
                 WHERE CAST(t.fecha AS DATE) >= ?
                   AND CAST(t.fecha AS DATE) <= ?
                 """
@@ -470,7 +513,9 @@ public class TicketRepository {
                     dto.nombreCliente =
                             rs.getString("nombrecliente");
 
-                    dto.ticketReferencia = rs.getInt("ticketreferencia");
+                    dto.ticketReferencia = (Integer) rs.getObject("ticketreferencia");
+                    dto.departamento = rs.getInt("departamento");
+                    dto.nombreDepartamento = rs.getString("nombre_departamento");
 
                     dto.total =
                             rs.getDouble("total");
@@ -520,7 +565,7 @@ public class TicketRepository {
 
         String sql = """
                 SELECT
-                    codigo,
+                    t.codigo,
                     fecha,
                     total,
                     idvendedor,
@@ -529,9 +574,13 @@ public class TicketRepository {
                     nombrecliente,
                     estado,
                     observacion,
-                    tipo
-                FROM util.ticket
-                WHERE codigo = ?
+                    tipo,
+                    t.departamento,
+                    d.nombre AS nombre_departamento
+                FROM util.ticket t
+                LEFT JOIN util.departamento d
+                       ON d.codigo = t.departamento
+                WHERE t.codigo = ?
                 """;
 
         try (Connection cn = dataSource.getConnection()) {
@@ -583,6 +632,10 @@ public class TicketRepository {
 
                     dto.tipo =
                             rs.getInt("tipo");
+
+                    dto.departamento = rs.getInt("departamento");
+
+                    dto.nombreDepartamento = rs.getString("nombre_departamento");
                 }
             }
 
@@ -694,7 +747,8 @@ public class TicketRepository {
                     c.condicioniva,
                     c.razonsocial,
                     c.localidad,
-                    t.ticketreferencia
+                    t.ticketreferencia,
+                    t.departamento
                 FROM util.ticket t
                 INNER JOIN util.cliente c
                         ON c.codigo = t.idcliente
@@ -797,6 +851,7 @@ public class TicketRepository {
 
         dto.ticketReferencia =
                 (Integer) rs.getObject("ticketreferencia");
+        dto.departamento = rs.getInt("departamento");
 
         return dto;
     }

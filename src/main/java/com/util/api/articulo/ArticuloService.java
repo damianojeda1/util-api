@@ -167,6 +167,25 @@ public class ArticuloService {
         );
     }
 
+
+    public ResultadoImportacionExcelDTO importarExcelLote(
+            ImportacionExcelRequest request
+    ) throws SQLException {
+
+        if (request == null
+                || request.articulos == null
+                || request.articulos.isEmpty()
+                || request.articulos.size() > 200) {
+
+            throw new IllegalArgumentException(
+                    "El lote debe contener entre 1 y 200 artículos"
+            );
+        }
+
+        return repository.importarExcelLote(request);
+    }
+
+
     public boolean delete(
             String codigo,
             int proveedor,

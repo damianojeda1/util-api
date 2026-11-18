@@ -1158,6 +1158,191 @@ public class ArticuloRepository {
         }
     }
 
+
+    public ResultadoImportacionExcelDTO importarExcelLote(
+            ImportacionExcelRequest request
+    ) throws SQLException {
+
+        ResultadoImportacionExcelDTO resultado =
+                new ResultadoImportacionExcelDTO();
+
+        String sqlUpdate = """
+        UPDATE util.articulo
+        SET descripcion = ?,
+            unidadcompra = ?,
+            multiplicadorcompra = ?,
+            costo = ?,
+            stock = CASE WHEN ? THEN ? ELSE stock END,
+            margenextra = CASE WHEN ? THEN ? ELSE margenextra END,
+            impuesto = ?,
+            categoria = ?,
+            llevastock = ?,
+            descripcionpropia = ?,
+            observacion = CASE
+                WHEN ? THEN ?
+                ELSE observacion
+            END,
+            fechaactualizacion = NOW()
+        WHERE codigo = ?
+          AND proveedor = ?
+        """;
+
+        String sqlInsert = """
+        INSERT INTO util.articulo (
+            codigo, descripcion, unidadventa,
+            unidadcompra, multiplicadorcompra,
+            costo, margenextra, categoria,
+            impuesto, proveedor, llevastock,
+            stock, stockminimo, observacion,
+            origen, habilitado, estadoproveedor,
+            descripcionpropia
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?
+        )
+        """;
+
+        try (Connection cn = dataSource.getConnection()) {
+
+            cn.setAutoCommit(false);
+
+            try (
+                    PreparedStatement update =
+                            cn.prepareStatement(sqlUpdate);
+                    PreparedStatement insert =
+                            cn.prepareStatement(sqlInsert)
+            ) {
+
+                for (ImportacionExcelRequest.Item item : request.articulos) {
+
+                    Savepoint savepoint = cn.setSavepoint();
+
+                    ArticuloDTO a = item == null ? null : item.articulo;
+
+                    try {
+                        if (a == null
+                                || a.codigo == null
+                                || a.codigo.isBlank()
+                                || a.proveedor == null
+                                || a.proveedor.primero < 0) {
+
+                            resultado.errores.add(
+                                    "Artículo inválido: código o proveedor faltante"
+                            );
+                            continue;
+                        }
+
+                        int i = 1;
+
+                        update.setString(i++, a.descripcion);
+                        update.setString(i++, a.unidadCompra);
+                        update.setDouble(i++,
+                                a.multiplicadorCompra == null
+                                        ? 1d : a.multiplicadorCompra);
+                        update.setDouble(i++,
+                                a.costo == null ? 0d : a.costo);
+
+                        update.setBoolean(i++, item.actualizaStock);
+                        update.setDouble(i++,
+                                a.stock == null ? 0d : a.stock);
+
+                        update.setBoolean(i++, request.actualizaMargen);
+                        update.setDouble(i++,
+                                a.margenExtra == null ? 0d : a.margenExtra);
+
+                        update.setInt(i++,
+                                a.impuesto == null ? 1 : a.impuesto.primero);
+                        update.setInt(i++,
+                                a.categoria == null ? 1 : a.categoria.primero);
+
+                        update.setBoolean(i++,
+                                Boolean.TRUE.equals(a.llevaStock));
+                        update.setString(i++, a.descripcionPropia);
+
+                        boolean tieneObs = a.observacion != null
+                                && !a.observacion.isBlank();
+
+                        update.setBoolean(i++, tieneObs);
+                        update.setString(i++, a.observacion);
+
+                        update.setString(i++, a.codigo);
+                        update.setInt(i++, a.proveedor.primero);
+
+                        int actualizados = update.executeUpdate();
+
+                        if (actualizados > 0) {
+                            resultado.actualizados++;
+                            continue;
+                        }
+
+                        if (!request.cargarNuevos) {
+                            resultado.sinCambios++;
+                            continue;
+                        }
+
+                        i = 1;
+
+                        insert.setString(i++, a.codigo);
+                        insert.setString(i++, a.descripcion);
+                        insert.setInt(i++,
+                                a.unidadVenta == null ? 1 : a.unidadVenta.primero);
+                        insert.setString(i++, a.unidadCompra);
+                        insert.setDouble(i++,
+                                a.multiplicadorCompra == null
+                                        ? 1d : a.multiplicadorCompra);
+                        insert.setDouble(i++,
+                                a.costo == null ? 0d : a.costo);
+                        insert.setDouble(i++,
+                                a.margenExtra == null ? 0d : a.margenExtra);
+                        insert.setInt(i++,
+                                a.categoria == null ? 1 : a.categoria.primero);
+                        insert.setInt(i++,
+                                a.impuesto == null ? 1 : a.impuesto.primero);
+                        insert.setInt(i++, a.proveedor.primero);
+                        insert.setBoolean(i++,
+                                Boolean.TRUE.equals(a.llevaStock));
+                        insert.setDouble(i++,
+                                a.stock == null || a.stock == -1000000d
+                                        ? 0d : a.stock);
+                        insert.setDouble(i++,
+                                a.stockMinimo == null ? 0d : a.stockMinimo);
+                        insert.setString(i++, a.observacion);
+                        insert.setInt(i++,
+                                a.origen == null ? 0 : a.origen);
+                        insert.setBoolean(i++,
+                                a.habilitado == null || a.habilitado);
+                        insert.setInt(i++,
+                                a.estadoProveedor == null ? 0 : a.estadoProveedor);
+                        insert.setString(i++, a.descripcionPropia);
+
+                        if (insert.executeUpdate() == 1) {
+                            resultado.insertados++;
+                        }
+
+                    } catch (SQLException | RuntimeException ex) {
+                        cn.rollback(savepoint);
+
+                        resultado.errores.add(
+                                "Código "
+                                        + (a == null ? "-" : a.codigo)
+                                        + ": " + ex.getMessage()
+                        );
+                    }
+                }
+
+                cn.commit();
+
+            } catch (Exception ex) {
+                cn.rollback();
+                throw ex;
+            }
+        }
+
+        return resultado;
+    }
+
+
     private ArticuloDTO map(ResultSet rs) throws SQLException {
 
         ArticuloDTO dto = new ArticuloDTO();

@@ -1270,83 +1270,70 @@ public class ReporteRepository {
     // PRODUCTOS RENTABLES
     // -------------------------------------------------------------------------
 
-    public List<ReporteDTO.ProductoRentableDTO>
-    listarProductosRentables(
+
+    public List<ReporteDTO.ProductoRentableDTO> listarProductosRentables(
             LocalDate desde,
             LocalDate hasta
     ) throws SQLException {
 
-        List<ReporteDTO.ProductoRentableDTO> result =
-                new ArrayList<>();
+        List<ReporteDTO.ProductoRentableDTO> result = new ArrayList<>();
 
         if (!rangoValido(desde, hasta)) {
             return result;
         }
 
         String sql = """
-                SELECT
-                    it.codigoarticulo AS codigo,
-                    it.descripcion,
-                    COALESCE(SUM(it.cantidad), 0) AS cantidad,
-                    COALESCE(
-                        SUM(it.neto + it.importeiva),
-                        0
-                    ) AS totalventa,
-                    COALESCE(
-                        SUM(it.costo * it.cantidad),
-                        0
-                    ) AS totalcosto,
-                    COALESCE(
-                        SUM(
-                            (it.neto + it.importeiva)
-                            - (it.costo * it.cantidad)
-                        ),
-                        0
-                    ) AS ganancia
-                FROM util.item it
-                INNER JOIN util.ticket tic
-                        ON tic.codigo = it.idticket
-                WHERE tic.tipo = 1
-                  AND tic.fecha::date BETWEEN ? AND ?
-                GROUP BY
-                    it.codigoarticulo,
-                    it.descripcion
-                ORDER BY
-                    ganancia DESC,
-                    it.descripcion ASC
-                """;
+            SELECT
+                it.codigoarticulo AS codigo,
+                it.descripcion,
+                COALESCE(SUM(
+                    CASE WHEN tic.tipo = 2
+                         THEN -it.cantidad
+                         ELSE it.cantidad END
+                ), 0) AS cantidad,
+                COALESCE(SUM(
+                    CASE WHEN tic.tipo = 2
+                         THEN -(it.neto + it.importeiva) * it.cantidad
+                         ELSE (it.neto + it.importeiva) * it.cantidad END
+                ), 0) AS totalventa,
+                COALESCE(SUM(
+                    CASE WHEN tic.tipo = 2
+                         THEN -(it.costo * it.cantidad)
+                         ELSE it.costo * it.cantidad END
+                ), 0) AS totalcosto,
+                COALESCE(SUM(
+                    CASE WHEN tic.tipo = 2
+                         THEN -((it.neto + it.importeiva - it.costo) * it.cantidad)
+                         ELSE (it.neto + it.importeiva - it.costo) * it.cantidad END
+                ), 0) AS ganancia
+            FROM util.item it
+            INNER JOIN util.ticket tic
+                    ON tic.codigo = it.idticket
+            WHERE tic.tipo IN (1, 2)
+              AND tic.fecha::date BETWEEN ? AND ?
+            GROUP BY
+                it.codigoarticulo,
+                it.descripcion
+            ORDER BY ganancia DESC, it.descripcion ASC
+            """;
 
         try (
                 Connection cn = dataSource.getConnection();
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
-
             setRango(ps, desde, hasta);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 while (rs.next()) {
-
                     ReporteDTO.ProductoRentableDTO dto =
                             new ReporteDTO.ProductoRentableDTO();
 
-                    dto.codigo =
-                            rs.getString("codigo");
-
-                    dto.descripcion =
-                            texto(rs.getString("descripcion"));
-
-                    dto.cantidad =
-                            decimal(rs, "cantidad");
-
-                    dto.totalVenta =
-                            decimal(rs, "totalventa");
-
-                    dto.totalCosto =
-                            decimal(rs, "totalcosto");
-
-                    dto.ganancia =
-                            decimal(rs, "ganancia");
+                    dto.codigo = rs.getString("codigo");
+                    dto.descripcion = texto(rs.getString("descripcion"));
+                    dto.cantidad = decimal(rs, "cantidad");
+                    dto.totalVenta = decimal(rs, "totalventa");
+                    dto.totalCosto = decimal(rs, "totalcosto");
+                    dto.ganancia = decimal(rs, "ganancia");
 
                     result.add(dto);
                 }
@@ -1355,69 +1342,62 @@ public class ReporteRepository {
 
         return result;
     }
+
 
     // -------------------------------------------------------------------------
     // EVOLUCIÓN DE VENTAS
     // -------------------------------------------------------------------------
 
-    public List<ReporteDTO.EvolucionVentaDTO>
-    obtenerEvolucionVentas(
+
+    public List<ReporteDTO.EvolucionVentaDTO> obtenerEvolucionVentas(
             LocalDate desde,
             LocalDate hasta
     ) throws SQLException {
 
-        List<ReporteDTO.EvolucionVentaDTO> result =
-                new ArrayList<>();
+        List<ReporteDTO.EvolucionVentaDTO> result = new ArrayList<>();
 
         if (!rangoValido(desde, hasta)) {
             return result;
         }
 
         String sql = """
-                SELECT
-                    tic.fecha::date AS fecha,
-                    COUNT(*) AS tickets,
-                    COALESCE(SUM(tic.subtotal), 0) AS subtotal,
-                    COALESCE(
-                        SUM(tic.bonificacion),
-                        0
-                    ) AS bonificacion,
-                    COALESCE(SUM(tic.total), 0) AS total
-                FROM util.ticket tic
-                WHERE tic.tipo = 1
-                  AND tic.fecha::date BETWEEN ? AND ?
-                GROUP BY tic.fecha::date
-                ORDER BY tic.fecha::date ASC
-                """;
+            SELECT
+                tic.fecha::date AS fecha,
+                COUNT(*) FILTER (WHERE tic.tipo = 1) AS tickets,
+                COALESCE(SUM(
+                    CASE WHEN tic.tipo = 2
+                         THEN -ABS(tic.subtotal)
+                         ELSE tic.subtotal END
+                ), 0) AS subtotal,
+                COALESCE(SUM(
+                    CASE WHEN tic.tipo = 2
+                         THEN -ABS(tic.bonificacion)
+                         ELSE tic.bonificacion END
+                ), 0) AS bonificacion,
+                COALESCE(SUM(tic.total), 0) AS total
+            FROM util.ticket tic
+            WHERE tic.tipo IN (1, 2)
+              AND tic.fecha::date BETWEEN ? AND ?
+            GROUP BY tic.fecha::date
+            ORDER BY tic.fecha::date ASC
+            """;
 
         try (
                 Connection cn = dataSource.getConnection();
                 PreparedStatement ps = cn.prepareStatement(sql)
         ) {
-
             setRango(ps, desde, hasta);
 
             try (ResultSet rs = ps.executeQuery()) {
-
                 while (rs.next()) {
-
                     ReporteDTO.EvolucionVentaDTO dto =
                             new ReporteDTO.EvolucionVentaDTO();
 
-                    dto.fecha =
-                            rs.getDate("fecha");
-
-                    dto.cantidadTickets =
-                            rs.getInt("tickets");
-
-                    dto.subtotal =
-                            decimal(rs, "subtotal");
-
-                    dto.bonificacion =
-                            decimal(rs, "bonificacion");
-
-                    dto.total =
-                            decimal(rs, "total");
+                    dto.fecha = rs.getDate("fecha");
+                    dto.cantidadTickets = rs.getInt("tickets");
+                    dto.subtotal = decimal(rs, "subtotal");
+                    dto.bonificacion = decimal(rs, "bonificacion");
+                    dto.total = decimal(rs, "total");
 
                     result.add(dto);
                 }
@@ -1426,6 +1406,7 @@ public class ReporteRepository {
 
         return result;
     }
+
 
     // -------------------------------------------------------------------------
     // AUXILIARES
