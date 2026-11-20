@@ -62,6 +62,12 @@ public class ArticuloService {
         );
     }
 
+    public List<ArticuloRepository.SugerenciaVenta> buscarSugerenciasVenta(
+            String filtro, int codigoUsuario
+    ) throws SQLException {
+        return repository.buscarSugerenciasVenta(filtro, codigoUsuario);
+    }
+
     public List<ArticuloDTO> buscarParaVentaPorCodigo(
             String codigo,
             int codigoUsuario

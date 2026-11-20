@@ -261,20 +261,21 @@ public class ArticuloRepository {
 
         params.add(codigoUsuario);
 
-        if (filtro != null && !filtro.trim().isEmpty()) {
-            sql.append("""
-              AND (
-                     art.codigo ILIKE ?
-                  OR art.descripcionpropia ILIKE ?
-                  OR art.descripcion ILIKE ?
-              )
-        """);
-
-            String like = "%" + filtro.trim() + "%";
-
-            params.add(like);
-            params.add(like);
-            params.add(like);
+        if (filtro != null && !filtro.isBlank()) {
+            for (String palabra : filtro.strip().split("\\s+")) {
+                sql.append("""
+                    AND (
+                           art.codigo ILIKE ? ESCAPE '!'
+                        OR art.descripcionpropia ILIKE ? ESCAPE '!'
+                        OR art.descripcion ILIKE ? ESCAPE '!'
+                    )
+                    """);
+                String like = "%" + palabra.replace("!", "!!")
+                        .replace("%", "!%").replace("_", "!_") + "%";
+                params.add(like);
+                params.add(like);
+                params.add(like);
+            }
         }
 
         sql.append("""
@@ -309,7 +310,7 @@ public class ArticuloRepository {
 
         FROM candidatos
         WHERE rn = 1
-        ORDER BY descripcion ASC
+        ORDER BY descripcion ASC, codigo ASC
     """);
 
         if (limite > 0) {
@@ -338,10 +339,49 @@ public class ArticuloRepository {
         return result;
     }
 
+    public static final class SugerenciaVenta {
+        public ArticuloDTO articulo;
+        public List<ArticuloDTO> variantes;
+    }
+
+    public List<SugerenciaVenta> buscarSugerenciasVenta(String filtro, int usuario)
+            throws SQLException {
+        List<ArticuloDTO> encontrados = buscarParaVenta(filtro, usuario, 15);
+        List<String> codigos = encontrados.stream().map(a -> a.codigo.trim()).distinct().toList();
+        var variantes = new java.util.HashMap<String, List<ArticuloDTO>>();
+
+        for (ArticuloDTO a : buscarVariantesParaVenta(codigos, usuario)) {
+            variantes.computeIfAbsent(a.codigo.trim(), k -> new ArrayList<>()).add(a);
+        }
+
+        List<SugerenciaVenta> resultado = new ArrayList<>();
+        for (ArticuloDTO a : encontrados) {
+            SugerenciaVenta item = new SugerenciaVenta();
+            item.articulo = a;
+            item.variantes = variantes.getOrDefault(a.codigo.trim(), List.of());
+            resultado.add(item);
+        }
+        return resultado;
+    }
+
     public List<ArticuloDTO> buscarParaVentaPorCodigo(
             String codigo,
             int codigoUsuario
     ) throws SQLException {
+
+        if (codigo == null) {
+            return List.of();
+        }
+        return buscarVariantesParaVenta(List.of(codigo), codigoUsuario);
+    }
+
+    private List<ArticuloDTO> buscarVariantesParaVenta(
+            List<String> codigos,
+            int codigoUsuario
+    ) throws SQLException {
+        if (codigos.isEmpty()) {
+            return List.of();
+        }
 
         List<Object> params = new ArrayList<>();
 
@@ -383,7 +423,7 @@ public class ArticuloRepository {
         WHERE art.habilitado = TRUE
           AND prov.habilitado = TRUE
           AND art.costo > 0
-          AND TRIM(art.codigo) = ?
+          AND TRIM(art.codigo) IN (%s)
           AND NOT EXISTS (
               SELECT 1
               FROM util.proveedorusuario pu
@@ -392,9 +432,9 @@ public class ArticuloRepository {
                 AND pu.estado = 1
           )
         ORDER BY art.descripcion ASC
-    """);
+    """.formatted(String.join(", ", java.util.Collections.nCopies(codigos.size(), "?"))));
 
-        params.add(codigo);
+        params.addAll(codigos);
         params.add(codigoUsuario);
 
         List<ArticuloDTO> result = new ArrayList<>();

@@ -152,6 +152,23 @@ public class ArticuloController {
     }
 
     @GET
+    @Path("/venta/sugerencias")
+    public Response buscarSugerenciasVenta(
+            @QueryParam("filtro") @DefaultValue("") String filtro,
+            @QueryParam("usuario") int usuario
+    ) {
+        if (usuario <= 0 || filtro.strip().length() < 3) {
+            return Response.ok(List.of()).build();
+        }
+        try {
+            return Response.ok(service.buscarSugerenciasVenta(filtro, usuario)).build();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return Response.serverError().entity("Error buscando sugerencias").build();
+        }
+    }
+
+    @GET
     @Path("/venta/codigo/{codigo}")
     public Response buscarParaVentaPorCodigo(
             @PathParam("codigo")
